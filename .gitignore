@@ -1,0 +1,7 @@
+.env.local
+/venv/
+**/*.pyc
+**/__pycache__/
+.idea
+.DS_Store
+db.sqlite*

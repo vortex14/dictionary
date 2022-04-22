@@ -1,0 +1,8 @@
+PyTelegramBotAPI==4.4.1
+fastapi-utils
+tortoise-orm
+aiogram
+omymodels
+fastapi
+uvicorn
+loguru
