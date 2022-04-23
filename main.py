@@ -39,8 +39,8 @@ class MainServer:
         return await Role.all()
 
     @router.delete("/roles", status_code=status.HTTP_200_OK)
-    async def delete_roles(self):
-        await Role.filter().delete()
+    async def delete_roles(self, role: RolePy):
+        await Role.filter(title=role.title).delete()
     
     @router.put("/roles", status_code=status.HTTP_200_OK)
     async def new_role(self, role: RolePy):
