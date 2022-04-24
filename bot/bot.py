@@ -1,3 +1,4 @@
+from email.policy import default
 import os
 import logging
 import asyncio
@@ -6,9 +7,12 @@ from typing_extensions import Self
 from logger import typhoon_logger
 from aiogram import Bot, Dispatcher, executor, types
 
+from models import User, get_user, ADMIN, UNKNOWN
+
 from .users import CommandUsers
 from .roles import CommandRoles
 
+from pydantic import BaseModel
 from aiogram.dispatcher import FSMContext
 
 from aiogram.dispatcher.filters.state import State, StatesGroup
@@ -18,7 +22,6 @@ storage = MemoryStorage()
 
 class Form(StatesGroup):
     subcommand = State()
-
 
 class KosmoBot:
 
@@ -40,13 +43,22 @@ class KosmoBot:
     async def on_message(self, message: types.Message):
         command = message.get_command()
 
+        role, user = await get_user(message.from_user)   
+        print(role.title)
+
+        # u = await User.create(first_name=message.from_user["first_name"])
+
+        # print(u)
+
         self.LOG.info("on new message", details={ "command": message.get_command(), "handlers": len(self.dp.message_handlers.handlers) } )
 
         match command:
             case '/users':
-                await self.commands[command].run(message)
+                await self.commands[command].run(user, role, message)
             case "/roles":
-                await self.commands[command].run(message)
+                await self.commands[command].run(user, role, message)
+            case _:
+                await message.answer("Not found")    
 
     async def close(self):
         bot = self.bot.get_session()

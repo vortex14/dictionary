@@ -6,11 +6,11 @@ from turtle import title
 from unittest import case
 from tortoise import Tortoise
 from logger import typhoon_logger
+from models import ADMIN, UNKNOWN
 from fastapi_utils.cbv import cbv
 from models.models_orm import Role, User, RolePy
 from fastapi_utils.inferring_router import InferringRouter
 from fastapi import Depends, FastAPI, status, HTTPException
-
 
 app = FastAPI()
 bot = KosmoBot()
@@ -20,16 +20,29 @@ LOG = typhoon_logger(name="Server", component="api", level="DEBUG")
 @cbv(router)
 class MainServer:
 
+
+    @staticmethod
+    async def init_base_role():
+
+        for role in (ADMIN, UNKNOWN, ):
+            if not (await Role.filter(title=role).count()):
+                unknown = await Role.create(title=role)
+                await unknown.save()
+        
     @app.on_event("startup")
     async def on_startup():
         LOG.info("starting server ...")
 
+        
         await Tortoise.init(
             db_url=os.environ["DB_URL"],
             modules={'models': ['models.models_orm']}
         )
+        
+       
 
-        # await Tortoise.generate_schemas()
+        await Tortoise.generate_schemas()
+        await MainServer.init_base_role()
 
         await bot.run()
 

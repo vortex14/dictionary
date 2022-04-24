@@ -1,14 +1,12 @@
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher import FSMContext
-from models.models_orm import Role
+from models import User, Role
 
 class Form(StatesGroup):
     sub_role_command = State()
     remove_role_name = State()
     role_name = State()
-
-
 
 class CommandRoles:
     
@@ -29,7 +27,7 @@ class CommandRoles:
         dp.register_message_handler(self.invalid_subcommand, lambda message: message.text not in list(self.valid_commands), state=Form.sub_role_command)
 
     
-    async def run(self, message: types.Message):
+    async def run(self, user: User, role: Role, message: types.Message):
         self.LOG.info("run", details={"command": "/roles"})
 
         await Form.sub_role_command.set()
@@ -42,7 +40,7 @@ class CommandRoles:
     async def invalid_subcommand(self, message: types.Message, state: FSMContext):
         self.LOG.info("subcommand process roles ...")
         await state.finish()
-        await message.reply('debil role', reply_markup=types.ReplyKeyboardRemove())
+        await message.reply('Oops', reply_markup=types.ReplyKeyboardRemove())
     
     
     async def subcommand(self, message: types.Message, state: FSMContext):
@@ -79,13 +77,9 @@ class CommandRoles:
     async def on_list(self, message: types.Message, state: FSMContext):
         self.LOG.info(f"process {message.text} ...")
 
-        roles = await Role.all()
+        roles = "".join( [ r.title + "\n" for r in await Role.all() ] )
 
-        _list = ""
-
-        for r in roles: _list += r.title + "\n"
-
-        await self.close(message, _list, state)
+        await self.close(message, roles or "Не найдено", state)
 
     async def on_remove(self, message: types.Message, state: FSMContext):
         self.LOG.info(f"process {message.text} ...")
