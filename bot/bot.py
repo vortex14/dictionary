@@ -11,6 +11,7 @@ from models import User, get_user, ADMIN, UNKNOWN
 
 from .users import CommandUsers
 from .roles import CommandRoles
+from .start import CommandStart
 
 from pydantic import BaseModel
 from aiogram.dispatcher import FSMContext
@@ -35,6 +36,7 @@ class KosmoBot:
         self.dp.register_message_handler(self.on_message)
 
         self.commands = {
+            "/start": CommandStart(self.bot, self.dp, self.LOG),
             "/users": CommandUsers(self.bot, self.dp, self.LOG),
             "/roles": CommandRoles(self.bot, self.dp, self.LOG)
         }
@@ -53,10 +55,13 @@ class KosmoBot:
         self.LOG.info("on new message", details={ "command": message.get_command(), "handlers": len(self.dp.message_handlers.handlers) } )
 
         match command:
+            case '/start':
+                await self.commands[command].run(user, role, message)
             case '/users':
                 await self.commands[command].run(user, role, message)
             case "/roles":
                 await self.commands[command].run(user, role, message)
+            
             case _:
                 await message.answer("Not found")    
 

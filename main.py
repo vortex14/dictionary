@@ -23,7 +23,6 @@ class MainServer:
 
     @staticmethod
     async def init_base_role():
-
         for role in (ADMIN, UNKNOWN, ):
             if not (await Role.filter(title=role).count()):
                 unknown = await Role.create(title=role)
@@ -41,7 +40,7 @@ class MainServer:
         
        
 
-        await Tortoise.generate_schemas()
+        # await Tortoise.generate_schemas()
         await MainServer.init_base_role()
 
         await bot.run()

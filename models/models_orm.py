@@ -1,3 +1,4 @@
+from enum import unique
 from pydoc import describe
 from tortoise import Tortoise, fields, run_async
 from tortoise.contrib.pydantic import pydantic_model_creator
@@ -7,7 +8,7 @@ from typing import Tuple
 class User(Model):
     telegram_id = fields.IntField()
 
-    user_id = fields.IntField(pk=True)
+    user_id = fields.IntField(pk=True, unique=True)
     username = fields.CharField(max_length=100, null=True)
     last_name = fields.CharField(max_length=100, null=True)
     first_name = fields.CharField(max_length=100, null=True)
@@ -38,9 +39,6 @@ async def get_user(source_user: dict) -> Tuple[Role, User]:
     if this: return (await this.role), this
 
     role = await Role.filter(title=UNKNOWN).first()
-    print(source_user)
-
-   
 
     return role, await User.create(
 
