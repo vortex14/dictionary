@@ -1,4 +1,3 @@
-from re import S
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from aiogram.utils.callback_data import CallbackData
 from aiogram import Bot, Dispatcher, executor, types
@@ -16,12 +15,14 @@ class Form(StatesGroup):
     file = State()
 
     term_name = State()
+    search_term = State()
     remove_term_name = State()
     sub_term_command = State()
 
 posts_cb = CallbackData('post', 'id', 'action')  # post:<id>:<action>
 
-PER_COUNT=2
+PER_COUNT=int(os.environ["PAGE_TERM_PER_COUNT"])
+MAX_SEARCH_OUTPUT=int(os.environ["MAX_SEARCH_OUTPUT"])
 
 class CommandTerms:
     
@@ -34,6 +35,7 @@ class CommandTerms:
             "Add": self.on_add,
             "List": self.on_first_list,
             "Upload": self.upload,
+            "Find": self.find,
             # "Remove": self.on_remove,
             # "List": self.on_list
         }
@@ -45,6 +47,8 @@ class CommandTerms:
         dp.filters_factory.bind(MimeTypeFilter, event_handlers=[dp.message_handlers])
         dp.register_message_handler(self.on_upload_file, content_types=types.ContentTypes.DOCUMENT, mime_type=["text/plain", "text/csv"], state=Form.file)
 
+        dp.register_message_handler(self.on_search, state=Form.search_term)
+
         dp.register_callback_query_handler(self.next_terms, posts_cb.filter(action='next_terms'))
         dp.register_callback_query_handler(self.back_terms, posts_cb.filter(action='back_terms'))
 
@@ -52,6 +56,15 @@ class CommandTerms:
         dp.register_message_handler(self.invalid_subcommand, lambda message: message.text not in list(self.valid_commands), state=Form.sub_term_command)
 
     
+    async def on_search(self, message: types.Message, state: FSMContext):
+        finded = await Term.filter(title__icontains=message.text)
+        result = "\n".join([it.title for it in finded[:MAX_SEARCH_OUTPUT]])
+        await self.close(message, f"Найдено: {len(finded)}\n{result}", state)
+
+    async def find(self, message: types.Message, state: FSMContext):
+        await Form.search_term.set()
+        await message.answer("?", reply_markup=types.ReplyKeyboardRemove() )
+        
     async def upload(self, message: types.Message, state: FSMContext):
         await Form.file.set()
         await message.answer("Жду файл", reply_markup=types.ReplyKeyboardRemove() )

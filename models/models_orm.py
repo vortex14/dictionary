@@ -7,7 +7,7 @@ from tortoise.models import Model
 from typing import Tuple
 
 class User(Model):
-    telegram_id = fields.IntField()
+    telegram_id = fields.BigIntField()
 
     user_id = fields.IntField(pk=True, unique=True)
     username = fields.CharField(max_length=100, null=True)
