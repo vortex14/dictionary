@@ -12,6 +12,7 @@ from models import User, get_user, ADMIN, UNKNOWN
 from .users import CommandUsers
 from .roles import CommandRoles
 from .start import CommandStart
+from .terms import CommandTerms
 
 from pydantic import BaseModel
 from aiogram.dispatcher import FSMContext
@@ -38,9 +39,13 @@ class KosmoBot:
         self.commands = {
             "/start": CommandStart(self.bot, self.dp, self.LOG),
             "/users": CommandUsers(self.bot, self.dp, self.LOG),
-            "/roles": CommandRoles(self.bot, self.dp, self.LOG)
+            "/roles": CommandRoles(self.bot, self.dp, self.LOG),
+            "/terms": CommandTerms(self.bot, self.dp, self.LOG)
         }
 
+    async def on_cancel(self, message: types.Message):
+        # await message.delete() 
+        await message.answer("canceled", reply_markup=types.ReplyKeyboardRemove() )
 
     async def on_message(self, message: types.Message):
         command = message.get_command()
@@ -61,9 +66,10 @@ class KosmoBot:
                 await self.commands[command].run(user, role, message)
             case "/roles":
                 await self.commands[command].run(user, role, message)
-            
+            case "/terms":
+                await self.commands[command].run(user, role, message)
             case _:
-                await message.answer("Not found")    
+                await self.on_cancel(message)   
 
     async def close(self):
         bot = self.bot.get_session()

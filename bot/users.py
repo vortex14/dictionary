@@ -11,6 +11,7 @@ from typing import List
 
 class Form(StatesGroup):
     subcommand = State()
+    cancel = State()
 
     user_id = State()
     role_id = State()
@@ -25,7 +26,7 @@ PER_COUNT=2
 
 def get_role_list(roles: List[Role]) -> types.InlineKeyboardMarkup:
     """
-    Generate keyboard with list of Users
+    Generate keyboard with list of Roles
     """
     markup = types.InlineKeyboardMarkup()
 
@@ -69,6 +70,12 @@ def get_user_list(page: int, users: List[User], is_next: bool) -> types.InlineKe
                 callback_data=posts_cb.new(id="+1", action='next_page')),
         )
 
+    markup.add(
+            types.InlineKeyboardButton(
+                "Cancel",
+                callback_data=posts_cb.new(id="cancel", action='cancel')),
+        )
+
     return markup
 
 class CommandUsers(CommandMixin):
@@ -80,6 +87,7 @@ class CommandUsers(CommandMixin):
         self.valid_commands = {
             "Count": self.on_count,
             "List": self.on_first_list,
+            "Cancel": self.on_cancel,
             # "Add": self.on_add,
             # "Remove": self.on_remove,
             # "Change": self.on_change
@@ -90,12 +98,28 @@ class CommandUsers(CommandMixin):
 
         dp.register_callback_query_handler(self.next_users, posts_cb.filter(action='next_page'))
         dp.register_callback_query_handler(self.back_users, posts_cb.filter(action='back_page'))
+
              
         dp.register_message_handler(self.subcommand, lambda message: message.text in self.valid_commands, state=Form.subcommand)
         dp.register_message_handler(self.invalid_subcommand, lambda message: message.text not in self.valid_commands, state=Form.subcommand)
+        
+        dp.register_callback_query_handler(self.on_cancel_callback, posts_cb.filter(action='cancel'))
+        dp.register_message_handler(self.on_cancel, state=Form.cancel)
+
+
+    async def on_cancel_callback(self, query: types.CallbackQuery, state: FSMContext):
+        await query.message.delete_reply_markup()
+        await self.close(query.message, "Canceled", state)
 
     
+    async def on_cancel(self,message: types.Message, state: FSMContext):
+        self.LOG.info("cancel ...")
+        await state.finish()
+        await message.reply("canceled", reply_markup=types.ReplyKeyboardRemove())
+        # await self.close(message, "canceled", state)
 
+
+    
     async def select_user(self, query: types.CallbackQuery, state: FSMContext):
         user_id = int(query.data.split(":")[1])
         user = await User.filter(telegram_id=user_id).first()
@@ -120,6 +144,7 @@ class CommandUsers(CommandMixin):
             await user.save()
             self.LOG.info("Selected a new role", details={"firstname": user.first_name, "lastname": user.last_name, "new_role": role.title})
             await query.message.delete()
+            
 
         await self.close(query.message, "Ok", state)
     
@@ -196,8 +221,8 @@ class CommandUsers(CommandMixin):
         await state.finish()
 
         await state.update_data(page=1, count=count)
+        await message.reply(":", reply_markup=get_user_list(1, users, True))
 
-        await message.reply('ok', reply_markup=get_user_list(1, users, True))
     
     async def change_status(self):
         pass

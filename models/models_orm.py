@@ -1,4 +1,5 @@
 from enum import unique
+from operator import index
 from pydoc import describe
 from tortoise import Tortoise, fields, run_async
 from tortoise.contrib.pydantic import pydantic_model_creator
@@ -27,6 +28,11 @@ class Role(Model):
 
 UserPy = pydantic_model_creator(User)
 RolePy = pydantic_model_creator(Role, exclude=('role_id',))
+
+class Term(Model):
+    term_id = fields.IntField(pk=True, unique=True)
+    title = fields.CharField(max_length=255, index=True, unique=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
 
 
 async def get_user(source_user: dict) -> Tuple[Role, User]:
