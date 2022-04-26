@@ -9,6 +9,7 @@ from aiogram import Bot, Dispatcher, executor, types
 
 from models import User, get_user, ADMIN, UNKNOWN
 
+from .definition import CommandDefinition
 from .users import CommandUsers
 from .roles import CommandRoles
 from .start import CommandStart
@@ -40,41 +41,27 @@ class KosmoBot:
             "/start": CommandStart(self.bot, self.dp, self.LOG),
             "/users": CommandUsers(self.bot, self.dp, self.LOG),
             "/roles": CommandRoles(self.bot, self.dp, self.LOG),
-            "/terms": CommandTerms(self.bot, self.dp, self.LOG)
+            "/terms": CommandTerms(self.bot, self.dp, self.LOG),
+            "/def": CommandDefinition(self.bot, self.dp, self.LOG)
         }
 
     async def on_cancel(self, message: types.Message):
-        # await message.delete() 
         await message.answer("canceled", reply_markup=types.ReplyKeyboardRemove() )
 
     async def on_message(self, message: types.Message):
         command = message.get_command()
 
         role, user = await get_user(message.from_user)   
-        print(role.title)
 
-        # u = await User.create(first_name=message.from_user["first_name"])
-
-        # print(u)
-
-        self.LOG.info("on new message", details={ "command": message.get_command(), "handlers": len(self.dp.message_handlers.handlers) } )
-
-        match command:
-            case '/start':
-                await self.commands[command].run(user, role, message)
-            case '/users':
-                await self.commands[command].run(user, role, message)
-            case "/roles":
-                await self.commands[command].run(user, role, message)
-            case "/terms":
-                await self.commands[command].run(user, role, message)
-            case _:
-                await self.on_cancel(message)   
+        self.LOG.info("on new message", details={"user_role": role.title, "command": message.get_command(), "handlers": len(self.dp.message_handlers.handlers) } )
+        if self.commands.get(command):
+            return await self.commands[command].run(user, role, message)
+            
+        await self.on_cancel(message)   
 
     async def close(self):
         bot = self.bot.get_session()
         bot.close()
-
 
     async def run(self):
         asyncio.create_task(self.dp.start_polling())

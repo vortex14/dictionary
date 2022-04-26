@@ -1,10 +1,32 @@
-from enum import unique
-from operator import index
-from pydoc import describe
-from tortoise import Tortoise, fields, run_async
 from tortoise.contrib.pydantic import pydantic_model_creator
+from tortoise import Tortoise, fields, run_async
 from tortoise.models import Model
+from pydoc import describe
+from operator import index
 from typing import Tuple
+from enum import unique
+
+class DefinitionType(Model):
+    type_id = fields.IntField(pk=True, unique=True)
+    title = fields.CharField(max_length=300, unique=True, index=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+class Definition(Model):
+    id = fields.IntField(pk=True, unique=True)
+    type = fields.ForeignKeyField("models.DefinitionType", related_name="type", null=True)
+    
+    terms: fields.ManyToManyRelation["Term"] = fields.ManyToManyField(
+        "models.Term", related_name="definitions", through="term_definitions"
+    )
+
+    content = fields.TextField()
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+class Term(Model):
+    term_id = fields.IntField(pk=True, unique=True)
+    title = fields.CharField(max_length=255, index=True, unique=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    definitions: fields.ManyToManyRelation[Definition]
 
 class User(Model):
     telegram_id = fields.BigIntField()
@@ -29,10 +51,8 @@ class Role(Model):
 UserPy = pydantic_model_creator(User)
 RolePy = pydantic_model_creator(Role, exclude=('role_id',))
 
-class Term(Model):
-    term_id = fields.IntField(pk=True, unique=True)
-    title = fields.CharField(max_length=255, index=True, unique=True)
-    created_at = fields.DatetimeField(auto_now_add=True)
+
+
 
 
 async def get_user(source_user: dict) -> Tuple[Role, User]:
