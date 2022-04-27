@@ -53,7 +53,7 @@ class KosmoBot:
 
         role, user = await get_user(message.from_user)   
 
-        self.LOG.info("on new message", details={"user_role": role.title, "command": message.get_command(), "handlers": len(self.dp.message_handlers.handlers) } )
+        self.LOG.info("on new message", details={"user_role": role.title, "command": message.get_command(), "handlers": len(self.dp.message_handlers.handlers), **dict(user) } )
         if self.commands.get(command):
             return await self.commands[command].run(user, role, message)
             
