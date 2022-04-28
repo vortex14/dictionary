@@ -14,6 +14,7 @@ from .users import CommandUsers
 from .roles import CommandRoles
 from .start import CommandStart
 from .terms import CommandTerms
+from .types import CommandDefinitionTypes
 
 from pydantic import BaseModel
 from aiogram.dispatcher import FSMContext
@@ -41,8 +42,10 @@ class KosmoBot:
             "/start": CommandStart(self.bot, self.dp, self.LOG),
             "/users": CommandUsers(self.bot, self.dp, self.LOG),
             "/roles": CommandRoles(self.bot, self.dp, self.LOG),
+
             "/terms": CommandTerms(self.bot, self.dp, self.LOG),
-            "/def": CommandDefinition(self.bot, self.dp, self.LOG)
+            "/def": CommandDefinition(self.bot, self.dp, self.LOG),
+            "/types": CommandDefinitionTypes(self.bot, self.dp, self.LOG)
         }
 
     async def on_cancel(self, message: types.Message):

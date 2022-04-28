@@ -1,3 +1,4 @@
+import uuid
 from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters import BoundFilter
 from typing import List, Union
@@ -37,3 +38,7 @@ class MimeTypeFilter(BoundFilter):
 async def fetch(session, url):
     async with session.get(url) as response:
         return await response.text()
+
+
+def string_to_uuid(content: str) -> str:
+    return str(uuid.uuid5(uuid.NAMESPACE_DNS, content))

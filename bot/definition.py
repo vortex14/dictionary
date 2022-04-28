@@ -4,13 +4,14 @@ from aiogram import Bot, Dispatcher, executor, types
 
 from aiogram.dispatcher import FSMContext
 from sqlalchemy import DefaultClause
-from utils import MimeTypeFilter, fetch
+from utils import MimeTypeFilter, fetch, string_to_uuid
 from models import User, Role, Term, Definition, DefinitionType
+from .types import DefinitionTypeMixin, Form as DefTypeForm
 from typing import List, Union
 import aiohttp
 import os
 
-class Form(StatesGroup):
+class Form(DefTypeForm):
     page = State()
     count = State()
     def_file = State()
@@ -19,6 +20,7 @@ class Form(StatesGroup):
     def_list_term = State()
     exist_term_name = State()
     def_content = State()
+    def_edited_content = State()
     search_def = State()
     sub_def_command = State()
     sub_def_edit_command = State()
@@ -28,7 +30,7 @@ posts_cb = CallbackData('post', 'id', 'action')  # post:<id>:<action>
 PER_COUNT=int(os.environ["PAGE_DEF_PER_COUNT"])*5
 MAX_SEARCH_OUTPUT=int(os.environ["MAX_SEARCH_OUTPUT"])
 
-class CommandDefinition:
+class CommandDefinition(DefinitionTypeMixin):
     
     def __init__(self, bot, dp: Dispatcher ,log) -> None:
         self.LOG = log
@@ -48,13 +50,20 @@ class CommandDefinition:
 
         self.defs_commands = {
             "Edit": self.on_edit,
-            "Remove": self.on_remove
+            "Remove": self.on_remove,
+            "Type": self.on_type
+        }
+
+        self.types_commands = {
+             "Edit": DefinitionTypeMixin.on_type_edit,
+             "Add": self.add_type
         }
 
              
         dp.register_message_handler(self.on_check_term, state=Form.exist_term_name)
         dp.register_message_handler(self.on_def_list_def, state=Form.def_list_term)
         dp.register_message_handler(self.on_new_def, state=Form.def_content)
+        dp.register_message_handler(self.on_edited_def, state=Form.def_edited_content)
         dp.register_message_handler(self.on_def_term, state=Form.def_term)
 
 
@@ -73,6 +82,8 @@ class CommandDefinition:
         dp.register_callback_query_handler(self.on_cancel, posts_cb.filter(action='cancel'))
 
         dp.register_callback_query_handler(self.on_select_def, posts_cb.filter(action='select_def'))
+        dp.register_callback_query_handler(self.on_select_type, posts_cb.filter(action='select_type'))
+        dp.register_message_handler(self.add_type, lambda message: message.text in "Add", state=Form.sub_detail_type_command)
 
         dp.register_message_handler(self.subcommand, lambda message: message.text in list(self.valid_commands), state=Form.sub_def_command)
         dp.register_message_handler(self.invalid_subcommand, lambda message: message.text not in list(self.valid_commands), state=Form.sub_def_command)
@@ -102,13 +113,17 @@ class CommandDefinition:
         async with aiohttp.ClientSession() as session:
             data = (await fetch(session, url)).split("\n")
             self.LOG.info(f'Получен файл', details={"count": len(data)})
-            exists = 0
-            saved = 0
+            term_exists = 0
+            def_exists = 0
+            saved_term = 0
+            saved_def = 0
+            error_line = 0
 
             for it in data:
                 try:
                     term, _def = it.split(":")
                 except:
+                    error_line += 1
                     continue
 
                 if not (await Term.exists(title=term.lower())):
@@ -120,15 +135,28 @@ class CommandDefinition:
                     await definition.terms.add(term)
 
                     
-                    saved += 1
+                    saved_def += 1
+                    saved_term += 1
+
                 else:
                     term = await Term.filter(title=term.lower()).first()
-                    definition = Definition(content=_def)
-                    await definition.save()
-                    await definition.terms.add(term)
-                    exists += 1
+                    is_exist = False
+                    new_def_content =  _def.lower()
+                    definition = Definition(content=new_def_content)
+                    async for _def in term.definitions:
+                        if string_to_uuid(new_def_content) == string_to_uuid(_def.content):
+                            is_exist = True
+                            break
+                    if not is_exist:
+                        saved_def += 1
+                        await definition.save()
+                        await definition.terms.add(term)
+                    else:
+                        def_exists += 1    
+                    
+                    term_exists += 1
 
-            await message.answer(f"Обработано: {len(data)}, Добавлено терминов: {saved}, Добавлено определений: {exists+saved}")
+            await message.answer(f"Обработано: {len(data)}, Добавлено терминов: {saved_term}\nДобавлено определений: {saved_def}, Ошибок в линиях: {error_line}\nДубликатов определений: {def_exists}, Найденных терминов: {term_exists}")
 
         await state.finish()    
 
@@ -142,7 +170,15 @@ class CommandDefinition:
         await message.reply("next subcommand", reply_markup=markup)
 
 
+    async def add_type(self, message: types.Message, state: FSMContext ):
+        sd = await state.get_data()
+        self.LOG.info("add type", details={**dict(sd)})
+        _type = await DefinitionType.filter(type_id=sd["type_id"]).first()
+        await Definition.filter(id=sd["def_id"]).update(type=_type)
+        await self.close(message, "Тип прикреплён к определению", state)
 
+
+    
     async def on_select_def(self, query: types.CallbackQuery, state: FSMContext):
         def_id = int(query.data.split(":")[1])
         current_state = await state.get_data()
@@ -157,9 +193,6 @@ class CommandDefinition:
 
         await query.message.answer(_def.content, reply_markup=markup)
 
-    
-    async def on_edit(self):
-        pass
         
     async def next_defs(self, query: types.CallbackQuery, state: FSMContext):
         async with state.proxy() as data:
@@ -184,7 +217,6 @@ class CommandDefinition:
             term = await Term.filter(title=data["term"]).first()
             defs = await Definition.filter(terms=term.term_id)
             await query.message.edit_text("<-", reply_markup=self.get_def_list(next_page, defs, is_back))
-    
     
     async def invalid_subcommand(self, message: types.Message, state: FSMContext):
         self.LOG.info("subcommand process defs ...")
@@ -281,7 +313,36 @@ class CommandDefinition:
         await message.reply("canceled", reply_markup=types.ReplyKeyboardRemove())
         # await self.close(message, "canceled", state)
 
+    async def on_edit(self, message: types.Message, state: FSMContext):
+        await Form.def_edited_content.set()
+        await message.answer("Какое новое определение?", reply_markup=types.ReplyKeyboardRemove() )
 
+    async def on_edited_def(self, message: types.Message, state: FSMContext):
+        current_state = await state.get_data()
+        def_id = current_state["def_id"]
+        await state.finish()
+
+        self.LOG.info("new def", details={"id": def_id, "content": message.text})
+
+        _def = await Definition.filter(id=int(def_id)).first()
+        self.LOG.info("current def ", details={"old content": _def.content, "new content": message.text.lower()})
+ 
+        if string_to_uuid(_def.content) == string_to_uuid(message.text.lower()):
+            return await self.close(message, "Такое определение уже было", state)
+
+        await Definition.filter(id=def_id).update(content=message.text.lower())
+
+        await message.answer("Обновлено", reply_markup=types.ReplyKeyboardRemove())
+    
+    async def on_type(self, message: types.Message, state: FSMContext):
+        def_types = await DefinitionType().all()
+        if len(def_types) == 0:
+            return await self.close(message, "Типов для определений нет. Добавить /types ?", state)
+
+        def_id = (await state.get_data())["def_id"]
+        await state.finish()
+        await state.update_data(def_id=def_id)
+        await self.def_first_list(message, state)
     
     async def on_remove(self, message: types.Message, state: FSMContext):
         current_state = await state.get_data()
@@ -337,7 +398,7 @@ class CommandDefinition:
 
     def get_def_list(self, page: int, defs: List[Definition], is_next: bool) -> types.InlineKeyboardMarkup:
         """
-        Generate keyboard with list of Terms
+        Generate keyboard with list of Defs
         """
         markup = types.InlineKeyboardMarkup()
         skip = 0
