@@ -29,7 +29,7 @@ class Term(Model):
     definitions: fields.ManyToManyRelation[Definition]
 
 class User(Model):
-    telegram_id = fields.BigIntField()
+    telegram_id = fields.BigIntField(unique=True)
 
     user_id = fields.IntField(pk=True, unique=True)
     username = fields.CharField(max_length=100, null=True)

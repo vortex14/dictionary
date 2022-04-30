@@ -246,14 +246,14 @@ class CommandDefinition(DefinitionTypeMixin):
 
         await Form.def_term.set()
 
-        await message.answer("?", reply_markup=types.ReplyKeyboardRemove() )
+        await message.answer("Введите термин для отображения всех терминов", reply_markup=types.ReplyKeyboardRemove() )
     
     async def on_add(self, message: types.Message, state: FSMContext):
         self.LOG.info(f"process {message.text} ...")
 
         await Form.exist_term_name.set()
 
-        await message.answer("?", reply_markup=types.ReplyKeyboardRemove() )
+        await message.answer("К какому термину добавить определение?", reply_markup=types.ReplyKeyboardRemove() )
         
     async def on_def_term(self, message: types.Message, state: FSMContext):
         term_name = message.text.lower()
@@ -386,7 +386,7 @@ class CommandDefinition(DefinitionTypeMixin):
                 defs = await Definition.filter(terms=term.term_id)
                 await state.update_data(page=1, count=len(defs), term=term_name, term_id=term.term_id)
 
-                await message.reply("Добавленные определения", reply_markup=types.ReplyKeyboardRemove())
+                await message.reply("Добавленные определения. Для добавления типа определения необходимо его выбрать из списка.", reply_markup=types.ReplyKeyboardRemove())
                 await message.reply(":", reply_markup=self.get_def_list(1, defs, True))
             case False:
                 await self.close(message, f'Термин "{term_name}"не создан', state)
@@ -397,7 +397,7 @@ class CommandDefinition(DefinitionTypeMixin):
 
         await Form.def_list_term.set()
 
-        await message.answer("?", reply_markup=types.ReplyKeyboardRemove() )
+        await message.answer("Введите термин для отображения списка определений", reply_markup=types.ReplyKeyboardRemove() )
 
 
     def get_def_list(self, page: int, defs: List[Definition], is_next: bool) -> types.InlineKeyboardMarkup:
