@@ -190,8 +190,12 @@ class CommandDefinition(DefinitionTypeMixin):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add(*self.defs_commands)
         
+        content = _def.content
+        if _def.type:
+            _type = await _def.type
+            content = f"Привязан к типу: {_type.title} \n{content}"
 
-        await query.message.answer(_def.content, reply_markup=markup)
+        await query.message.answer(content, reply_markup=markup)
 
         
     async def next_defs(self, query: types.CallbackQuery, state: FSMContext):
