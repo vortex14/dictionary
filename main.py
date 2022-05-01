@@ -3,6 +3,7 @@ from nis import match
 from typing import List
 from bot import KosmoBot
 from turtle import title
+from asyncio import sleep
 from unittest import case
 from tortoise import Tortoise
 from logger import typhoon_logger
@@ -29,6 +30,7 @@ class MainServer:
     @app.on_event("startup")
     async def on_startup():
         LOG.info("starting server ...")
+        await sleep(6)
 
         await Tortoise.init(
             db_url=os.environ["DB_URL"],

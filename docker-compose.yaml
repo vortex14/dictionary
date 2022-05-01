@@ -5,8 +5,8 @@ services:
       context: ./
       dockerfile: Dockerfile.postgress
     environment:
-      POSTGRES_DB: "dictionary"
-      POSTGRES_USER: dictionary
+      POSTGRES_DB: root
+      POSTGRES_USER: root
       POSTGRES_HOST_AUTH_METHOD: "trust"
       PGDATA: "/var/lib/postgresql/data/pgdata"
     volumes:
