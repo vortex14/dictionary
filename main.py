@@ -2,9 +2,7 @@ import os
 from nis import match
 from typing import List
 from bot import KosmoBot
-from turtle import title
 from asyncio import sleep
-from unittest import case
 from tortoise import Tortoise
 from logger import typhoon_logger
 from models import ADMIN, UNKNOWN
