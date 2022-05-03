@@ -46,7 +46,7 @@ ADMIN = "admin"
 class Role(Model):
     
     role_id = fields.IntField(pk=True)
-    title = fields.CharField(max_length=100)
+    title = fields.CharField(max_length=100, unique=True)
 
 UserPy = pydantic_model_creator(User)
 RolePy = pydantic_model_creator(Role, exclude=('role_id',))
