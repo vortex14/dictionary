@@ -23,8 +23,7 @@ class MainServer:
     async def init_base_role():
         for role in (ADMIN, UNKNOWN, ):
             if not (await Role.filter(title=role).count()):
-                unknown = await Role.create(title=role)
-                await unknown.save()
+                await Role(title=role).save()
         
     @app.on_event("startup")
     async def on_startup():
