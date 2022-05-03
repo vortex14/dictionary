@@ -66,7 +66,7 @@ async def get_user(source_user: dict) -> Tuple[Role, User]:
 
     role = await Role.filter(title=UNKNOWN).first()
 
-    return role, await User.create(
+    return role, await User(
 
         telegram_id=source_user["id"],
         username=username,
@@ -76,4 +76,4 @@ async def get_user(source_user: dict) -> Tuple[Role, User]:
         language_code=source_user["language_code"],
 
         role=role
-    )
+    ).save()
