@@ -32,7 +32,7 @@ class MainServer:
         # await sleep(6)
 
         await Tortoise.init(
-            db_url=os.environ["DB_URL"],
+            db_url=os.environ["DATABASE_URL"],
             modules={'models': ['models.models_orm']}
         )
         try:
