@@ -44,6 +44,11 @@ class MainServer:
 
         # await bot.run()
 
+    @router.get("/")
+    async def roles(self):
+        return {
+            "status": True
+        }
 
     @router.get("/roles", response_model=List[RolePy])
     async def roles(self):
