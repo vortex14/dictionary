@@ -29,7 +29,7 @@ class MainServer:
     @app.on_event("startup")
     async def on_startup():
         LOG.info("starting server ...")
-        await sleep(6)
+        # await sleep(6)
 
         await Tortoise.init(
             db_url=os.environ["DB_URL"],
