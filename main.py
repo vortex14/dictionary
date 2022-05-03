@@ -42,7 +42,7 @@ class MainServer:
 
         await MainServer.init_base_role()
 
-        # await bot.run()
+        await bot.run()
 
     @router.get("/")
     async def roles(self):
