@@ -1,3 +1,4 @@
+from doctest import Example
 import os
 from nis import match
 from typing import List
@@ -34,8 +35,11 @@ class MainServer:
             db_url=os.environ["DB_URL"],
             modules={'models': ['models.models_orm']}
         )
-
-        await Tortoise.generate_schemas()
+        try:
+            await Tortoise.generate_schemas()
+        except Exception as e:
+            LOG.error(e)
+            
         await MainServer.init_base_role()
 
         await bot.run()
