@@ -38,8 +38,8 @@ class MainServer:
         try:
             await Tortoise.generate_schemas()
         except Exception as e:
-            LOG.error(e)
-            
+            LOG.error(str(e))
+
         await MainServer.init_base_role()
 
         await bot.run()
