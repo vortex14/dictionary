@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, executor, types
 
 from aiogram.dispatcher import FSMContext
 from sqlalchemy import DefaultClause
-from utils import MimeTypeFilter, fetch, string_to_uuid
+from utils import MimeTypeFilter, fetch, string_to_uuid, get_hash, remove_html_p, remove_html
 from models import User, Role, Term, Definition, DefinitionType
 from .types import DefinitionTypeMixin, Form as DefTypeForm
 from typing import List, Union
@@ -51,7 +51,8 @@ class CommandDefinition(DefinitionTypeMixin):
         self.defs_commands = {
             "Edit": self.on_edit,
             "Remove": self.on_remove,
-            "Type": self.on_type
+            "Type": self.on_type,
+            "Cancel": self.on_cancel
         }
 
         self.types_commands = {
@@ -195,7 +196,7 @@ class CommandDefinition(DefinitionTypeMixin):
             _type = await _def.type
             content = f"Привязан к типу: {_type.title} \n{content}"
 
-        await query.message.answer(content, reply_markup=markup)
+        await query.message.answer(content, reply_markup=markup, parse_mode="html")
 
         
     async def next_defs(self, query: types.CallbackQuery, state: FSMContext):
@@ -265,9 +266,10 @@ class CommandDefinition(DefinitionTypeMixin):
             case True:
                 await state.finish()
                 term = await Term.filter(title=term_name).first()
-                data = "\n\n".join( [it.content for it in await Definition.filter(terms=term.term_id)] )
+
+                data = "\n\n".join( [f'{"Тип неопределён " if  not await it.type else f"Тип: " + (await it.type).title }\n{remove_html_p(it.content)}' for it in await Definition.filter(terms=term.term_id)] )
                 if data:
-                    await message.answer(data, reply_markup=types.ReplyKeyboardRemove() )
+                    await message.answer(data, reply_markup=types.ReplyKeyboardRemove(), parse_mode="html" )
                 else:
                     await message.answer("Не найдены определения")
             case False:
@@ -288,14 +290,30 @@ class CommandDefinition(DefinitionTypeMixin):
                 await self.close(message, f'Термин "{term_name}"не создан', state)
     
     async def on_new_def(self, message: types.Message, state: FSMContext):
-        def_content = message.text.lower()
+        def_content = message.html_text
+        hash_data = get_hash(def_content.lower())
+
         async with state.proxy() as data:
             term = await Term.filter(title=data["term"]).first()
-            definition = Definition(content=def_content)
+            check = await Definition.filter(hash_data=hash_data).first()
+
+            if check:
+                self.LOG.warning("такое определение существует", details={"content": def_content, "term": data["term"]})
+                
+                return await self.close(message, "такое определение существует", state)
+
+            definition = Definition(content=def_content, hash_data=hash_data)
             await definition.save()
             await definition.terms.add(term)
-        
-            await self.close(message, f'Для термина "{term.title}" добавлено новое определение:\n{def_content}', state)
+
+            await Form.sub_def_edit_command.set()
+            markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+            markup.add(*self.defs_commands)
+
+            await state.update_data(def_id=definition.id)
+
+            await message.answer(f'Для термина "{term.title}" добавлено новое определение:\n{def_content}', reply_markup=markup, parse_mode="html")
+            
     
     async def on_count(self, message: types.Message, state: FSMContext):
         self.LOG.info(f"process {message.text} ...")
@@ -412,7 +430,7 @@ class CommandDefinition(DefinitionTypeMixin):
         for _def in defs[skip: skip + PER_COUNT]:
             markup.add(
                 types.InlineKeyboardButton(
-                    f"{_def.content}",
+                    f"{remove_html(_def.content)}",
                     callback_data=posts_cb.new(id=_def.id, action='select_def')),
             )
 

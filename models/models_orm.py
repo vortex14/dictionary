@@ -19,6 +19,8 @@ class Definition(Model):
         "models.Term", related_name="definitions", through="term_definitions"
     )
 
+    hash_data = fields.CharField(max_length=200, index=True)
+
     content = fields.TextField()
     created_at = fields.DatetimeField(auto_now_add=True)
 
@@ -50,8 +52,8 @@ class Role(Model):
 
 UserPy = pydantic_model_creator(User)
 RolePy = pydantic_model_creator(Role, exclude=('role_id',))
-
-
+TermPy = pydantic_model_creator(Term, exclude=('term_id', ))
+DefinitionPy = pydantic_model_creator(Definition, exclude=('id', 'hash_data', 'created_at'))
 
 
 

@@ -6,9 +6,9 @@ from bot import KosmoBot
 from asyncio import sleep
 from tortoise import Tortoise
 from logger import typhoon_logger
-from models import ADMIN, UNKNOWN
+from models import ADMIN, UNKNOWN, Definition
 from fastapi_utils.cbv import cbv
-from models.models_orm import Role, User, RolePy
+from models.models_orm import Role, Term, User, RolePy, TermPy, DefinitionPy
 from fastapi_utils.inferring_router import InferringRouter
 from fastapi import Depends, FastAPI, status, HTTPException
 
@@ -57,6 +57,28 @@ class MainServer:
     async def delete_roles(self, role: RolePy):
         await Role.filter(title=role.title).delete()
     
+    @router.get("/terms", status_code=status.HTTP_200_OK, response_model=List[TermPy])
+    async def get_terms(self):
+       return await Term.all()
+    
+    @router.get("/defs", status_code=status.HTTP_200_OK, response_model=List[DefinitionPy])
+    async def get_defs(self, term: str):
+        _term = await Term.filter(title=term.strip().lower()).first()
+        if not _term:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+        return await Definition.filter(terms=_term)
+
+    @router.post("/defs", status_code=status.HTTP_200_OK)
+    async def post_def(self, definition: DefinitionPy):
+
+        print(definition)
+        # _term = await Term.filter(title=term.strip().lower()).first()
+        # if not _term:
+        #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+
+        # return await Definition.filter(terms=_term)
+
     @router.put("/roles", status_code=status.HTTP_200_OK)
     async def new_role(self, role: RolePy):
         roleExist = await Role.exists(title=role.title)
