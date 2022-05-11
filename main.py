@@ -1,14 +1,13 @@
-from doctest import Example
 import os
-from nis import match
+from turtle import title
 from typing import List
 from bot import KosmoBot
-from asyncio import sleep
 from tortoise import Tortoise
 from logger import typhoon_logger
 from models import ADMIN, UNKNOWN, Definition
 from fastapi_utils.cbv import cbv
-from models.models_orm import Role, Term, User, RolePy, TermPy, DefinitionPy
+from models.models_orm import DefinitionType, Role, Term, User, RolePy, TermPy, DefinitionPy, DefPy
+from utils import get_hash
 from fastapi_utils.inferring_router import InferringRouter
 from fastapi import Depends, FastAPI, status, HTTPException
 
@@ -70,14 +69,21 @@ class MainServer:
         return await Definition.filter(terms=_term)
 
     @router.post("/defs", status_code=status.HTTP_200_OK)
-    async def post_def(self, definition: DefinitionPy):
+    async def post_def(self, definition: DefPy):
+        _term = await Term.filter(title=definition.term.title).first()
+        _type = await DefinitionType.filter(title=definition.type.title).first()
+        _hash = get_hash(definition.content)
+        check_def = await Definition.filter(hash_data=_hash).first()
+        if not _term or not _type or check_def:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT)
 
-        print(definition)
-        # _term = await Term.filter(title=term.strip().lower()).first()
-        # if not _term:
-        #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-
-        # return await Definition.filter(terms=_term)
+        new_def = Definition(content=definition.content, hash_data=_hash, type=_type)
+        await new_def.save()
+        await new_def.terms.add(_term)
+        return {
+            "def": new_def,
+            "term": _term
+        }
 
     @router.put("/roles", status_code=status.HTTP_200_OK)
     async def new_role(self, role: RolePy):

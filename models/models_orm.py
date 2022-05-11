@@ -51,10 +51,14 @@ class Role(Model):
     title = fields.CharField(max_length=100, unique=True)
 
 UserPy = pydantic_model_creator(User)
-RolePy = pydantic_model_creator(Role, exclude=('role_id',))
-TermPy = pydantic_model_creator(Term, exclude=('term_id', ))
-DefinitionPy = pydantic_model_creator(Definition, exclude=('id', 'hash_data', 'created_at'))
+RolePy = pydantic_model_creator(Role, exclude=('role_id', ))
+TermPy = pydantic_model_creator(Term, exclude=('term_id', 'created_at'))
+DefTypePy = pydantic_model_creator(DefinitionType, exclude=('type_id', 'created_at'))
+DefinitionPy = pydantic_model_creator(Definition, exclude=('id', 'hash_data', 'created_at'), exclude_readonly=True)
 
+class DefPy(DefinitionPy):
+    term: TermPy
+    type: DefTypePy
 
 
 async def get_user(source_user: dict) -> Tuple[Role, User]:
