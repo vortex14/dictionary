@@ -131,10 +131,8 @@ class CommandDefinition(DefinitionTypeMixin):
 
                     term = await Term.create(title=it.lower())
                     # term = await Term.filter(title=data["term"]).first()
-                    definition = Definition(content=_def)
+                    definition = Definition(content=_def, term=term)
                     await definition.save()
-                    await definition.terms.add(term)
-
                     
                     saved_def += 1
                     saved_term += 1
@@ -143,7 +141,7 @@ class CommandDefinition(DefinitionTypeMixin):
                     term = await Term.filter(title=term.lower()).first()
                     is_exist = False
                     new_def_content =  _def.lower()
-                    definition = Definition(content=new_def_content)
+                    definition = Definition(content=new_def_content, term=term)
                     async for _def in term.definitions:
                         if string_to_uuid(new_def_content) == string_to_uuid(_def.content):
                             is_exist = True
@@ -151,7 +149,6 @@ class CommandDefinition(DefinitionTypeMixin):
                     if not is_exist:
                         saved_def += 1
                         await definition.save()
-                        await definition.terms.add(term)
                     else:
                         def_exists += 1    
                     
@@ -206,7 +203,7 @@ class CommandDefinition(DefinitionTypeMixin):
             next_page = data["page"] + 1
             data.update(page=next_page)
             term = await Term.filter(title=data["term"]).first()
-            defs = await Definition.filter(terms=term.term_id)
+            defs = await Definition.filter(term=term.term_id)
             await query.message.edit_text("->", reply_markup=self.get_def_list(next_page, defs, is_next))
         
 
@@ -220,7 +217,7 @@ class CommandDefinition(DefinitionTypeMixin):
             data.update(page=next_page)
 
             term = await Term.filter(title=data["term"]).first()
-            defs = await Definition.filter(terms=term.term_id)
+            defs = await Definition.filter(term=term.term_id)
             await query.message.edit_text("<-", reply_markup=self.get_def_list(next_page, defs, is_back))
     
     async def invalid_subcommand(self, message: types.Message, state: FSMContext):
@@ -267,7 +264,7 @@ class CommandDefinition(DefinitionTypeMixin):
                 await state.finish()
                 term = await Term.filter(title=term_name).first()
 
-                data = "\n\n".join( [f'{"Тип неопределён " if  not await it.type else f"Тип: " + (await it.type).title }\n{remove_html_p(it.content)}' for it in await Definition.filter(terms=term.term_id)] )
+                data = "\n\n".join( [f'{"Тип неопределён " if  not await it.type else f"Тип: " + (await it.type).title }\n{remove_html_p(it.content)}' for it in await Definition.filter(term=term.term_id)] )
                 if data:
                     await message.answer(data, reply_markup=types.ReplyKeyboardRemove(), parse_mode="html" )
                 else:
@@ -302,9 +299,8 @@ class CommandDefinition(DefinitionTypeMixin):
                 
                 return await self.close(message, "такое определение существует", state)
 
-            definition = Definition(content=def_content, hash_data=hash_data)
+            definition = Definition(content=def_content, hash_data=hash_data, term=term)
             await definition.save()
-            await definition.terms.add(term)
 
             await Form.sub_def_edit_command.set()
             markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
@@ -375,7 +371,7 @@ class CommandDefinition(DefinitionTypeMixin):
         await Definition.filter(id=def_id).delete()
 
         term = await Term.filter(term_id=current_state["term_id"]).first()
-        defs = await Definition.filter(terms=term.term_id)
+        defs = await Definition.filter(term=term.term_id)
         await state.update_data(page=1, def_id=def_id, count=len(defs), term_id=term.term_id)
 
         # await message.message.edit_text("<-", reply_markup=self.get_def_list(next_page, defs, is_back))
@@ -401,7 +397,7 @@ class CommandDefinition(DefinitionTypeMixin):
                 await state.finish()
                 
                 term = await Term.filter(title=term_name).first()
-                defs = await Definition.filter(terms=term.term_id)
+                defs = await Definition.filter(term=term.term_id)
                 await state.update_data(page=1, count=len(defs), term=term_name, term_id=term.term_id)
 
                 await message.reply("Добавленные определения. Для добавления типа определения необходимо его выбрать из списка.", reply_markup=types.ReplyKeyboardRemove())

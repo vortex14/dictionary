@@ -36,6 +36,7 @@ class CommandTerms:
             "List": self.on_first_list,
             "Upload": self.upload,
             "Find": self.find,
+            "Cancel": self.on_cancel
             # "Remove": self.on_remove,
             # "List": self.on_list
         }
@@ -189,6 +190,11 @@ class CommandTerms:
         await Role.filter(title=message.text).delete()
 
         await self.close(message, "removed", state)
+    
+    async def on_cancel(self, message: types.Message, state: FSMContext):
+        self.LOG.info("cancel ...")
+        await state.finish()
+        await message.reply("canceled", reply_markup=types.ReplyKeyboardRemove())
     
     async def close(self, message: types.Message, answer: str, state: FSMContext):
         self.LOG.info(f"close {message.text} ...")

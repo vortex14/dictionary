@@ -1,10 +1,19 @@
+from unicodedata import name
+from pydantic import (BaseModel,BaseSettings, Extra, Field)
+import pydantic
 from tortoise.contrib.pydantic import pydantic_model_creator
 from tortoise import Tortoise, fields, run_async
+from functools import partial
 from tortoise.models import Model
 from pydoc import describe
 from operator import index
 from typing import Tuple
 from enum import unique
+from copy import deepcopy
+from pydantic.dataclasses import dataclass
+from enum import Enum
+from typing import ClassVar, Optional, Any, Union, Set, List, Dict
+from collections import defaultdict
 
 class DefinitionType(Model):
     type_id = fields.IntField(pk=True, unique=True)
@@ -14,10 +23,10 @@ class DefinitionType(Model):
 class Definition(Model):
     id = fields.IntField(pk=True, unique=True)
     type = fields.ForeignKeyField("models.DefinitionType", related_name="type", null=True)
-    
-    terms: fields.ManyToManyRelation["Term"] = fields.ManyToManyField(
-        "models.Term", related_name="definitions", through="term_definitions"
-    )
+    term = fields.ForeignKeyField("models.Term", related_name="term", null=True)    
+    # terms: fields.ManyToManyRelation["Term"] = fields.ManyToManyField(
+    #     "models.Term", related_name="definitions", through="term_definitions", null=True
+    # )
 
     hash_data = fields.CharField(max_length=200, index=True)
 
@@ -52,14 +61,39 @@ class Role(Model):
 
 UserPy = pydantic_model_creator(User)
 RolePy = pydantic_model_creator(Role, exclude=('role_id', ))
-TermPy = pydantic_model_creator(Term, exclude=('term_id', 'created_at'))
-DefTypePy = pydantic_model_creator(DefinitionType, exclude=('type_id', 'created_at'))
-DefinitionPy = pydantic_model_creator(Definition, exclude=('id', 'hash_data', 'created_at'), exclude_readonly=True)
 
-class DefPy(DefinitionPy):
-    term: TermPy
-    type: DefTypePy
+TermShortFields = pydantic_model_creator(Term, exclude=('term_id', 'created_at'), name="TermShortFields")
+TermFullFields = pydantic_model_creator(Term)
 
+DefinitionShortFields = pydantic_model_creator(Definition, exclude=('id', 'created_at', 'hash_data'), name="DefinitionShortFields")
+DefinitionFullFields = pydantic_model_creator(Definition, name="DefinitionFullFields")
+
+DefinitionTypeFullFields = pydantic_model_creator(DefinitionType)
+DefinitionTypeShortFields = pydantic_model_creator(DefinitionType, exclude=('id', 'hash_data', 'created_at'), exclude_readonly=True, name="DefinitionTypeShortFields")
+
+class DefinitionShortRelations(DefinitionShortFields):
+    class Config:
+        title = "DefinitionShortRelations"
+
+    term: TermShortFields
+    type: DefinitionTypeShortFields
+
+
+class DefinitionFullRelationFields(BaseModel):
+    class Config:
+        title = "DefinitionFullRelations"
+
+    term: TermFullFields = None
+    type: DefinitionTypeFullFields = None
+    definition: DefinitionFullFields = None
+
+class DefinitionShortRelationFields(DefinitionShortFields):
+    class Config:
+        title = "DefinitionShortRelationFields"
+    
+    content: str = None    
+    term: TermShortFields = None
+    type: DefinitionTypeShortFields = None
 
 async def get_user(source_user: dict) -> Tuple[Role, User]:
     last_name = source_user["last_name"]
@@ -71,8 +105,7 @@ async def get_user(source_user: dict) -> Tuple[Role, User]:
     if this: return (await this.role), this
 
     role = await Role.filter(title=UNKNOWN).first()
-
-    return role, await User(
+    user = User(
 
         telegram_id=source_user["id"],
         username=username,
@@ -82,4 +115,6 @@ async def get_user(source_user: dict) -> Tuple[Role, User]:
         language_code=source_user["language_code"],
 
         role=role
-    ).save()
+    )
+    await user.save()
+    return role, user

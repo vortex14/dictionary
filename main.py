@@ -1,12 +1,15 @@
 import os
+import re
+from struct import pack
 from turtle import title
 from typing import List
-from bot import KosmoBot
+from bot import KosmoBot, terms
 from tortoise import Tortoise
 from logger import typhoon_logger
 from models import ADMIN, UNKNOWN, Definition
 from fastapi_utils.cbv import cbv
-from models.models_orm import DefinitionType, Role, Term, User, RolePy, TermPy, DefinitionPy, DefPy
+from models.models_orm import (DefinitionType, Role, Term, User, RolePy, DefinitionFullRelationFields, TermShortFields, TermFullFields, DefinitionFullFields, 
+                               DefinitionShortFields, DefinitionTypeShortFields, DefinitionTypeFullFields, TermFullFields, DefinitionFullFields, DefinitionShortRelationFields, DefinitionShortRelations)
 from utils import get_hash
 from fastapi_utils.inferring_router import InferringRouter
 from fastapi import Depends, FastAPI, status, HTTPException
@@ -43,7 +46,7 @@ class MainServer:
         await bot.run()
 
     @router.get("/")
-    async def roles(self):
+    async def roles():
         return {
             "status": True
         }
@@ -56,34 +59,75 @@ class MainServer:
     async def delete_roles(self, role: RolePy):
         await Role.filter(title=role.title).delete()
     
-    @router.get("/terms", status_code=status.HTTP_200_OK, response_model=List[TermPy])
+    @router.get("/terms", status_code=status.HTTP_200_OK, response_model=List[TermFullFields])
     async def get_terms(self):
        return await Term.all()
     
-    @router.get("/defs", status_code=status.HTTP_200_OK, response_model=List[DefinitionPy])
+    @router.get("/defs", status_code=status.HTTP_200_OK, response_model=List[DefinitionFullFields])
     async def get_defs(self, term: str):
         _term = await Term.filter(title=term.strip().lower()).first()
         if not _term:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
 
         return await Definition.filter(terms=_term)
+    
+    @router.get("/defs/{def_id}", status_code=status.HTTP_200_OK)
+    async def get_defs_by_id(self, def_id: int):
+        _def = await Definition.filter(id=def_id).first()
+        if not _def:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        return _def
 
-    @router.post("/defs", status_code=status.HTTP_200_OK)
-    async def post_def(self, definition: DefPy):
+    @router.patch("/defs/{def_id}", status_code=status.HTTP_200_OK, response_model=DefinitionFullRelationFields)
+    async def update_def_by_id(self, def_id, definition: DefinitionShortRelationFields):
+        _def = await Definition.filter(id=def_id).first()
+        _term = None
+        _type = None
+        payload = {}
+
+        if not _def:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Definition not found")
+        
+        if  definition.term:
+            _term = await Term.filter(title=definition.term.title).first()
+            if not _term: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Term not found")
+
+        if definition.type:
+            _type = await DefinitionType.filter(title=definition.type.title).first()
+            if not _type: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found")
+        
+        if definition.content:
+            payload["content"] = definition.content
+            payload["hash_data"] = get_hash(definition.content.lower())
+
+        if _type:
+            payload["type"] = _type
+        
+        if _term:
+            payload["term"] = _term
+
+        if payload:
+            await Definition.filter(id=def_id).update(**payload)
+        
+        _type = await _def.type
+        _term = await _def.term
+
+        return DefinitionFullRelationFields(definition=_def, type=_type, term=_term)
+
+    @router.post("/defs", status_code=status.HTTP_200_OK, response_model=DefinitionFullRelationFields)
+    async def post_def(self, definition: DefinitionShortRelations):
         _term = await Term.filter(title=definition.term.title).first()
+        if not _term: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Term not found")
         _type = await DefinitionType.filter(title=definition.type.title).first()
-        _hash = get_hash(definition.content)
+        if not _type: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Type not found")
+        _hash = get_hash(definition.content.lower())
         check_def = await Definition.filter(hash_data=_hash).first()
-        if not _term or not _type or check_def:
-            raise HTTPException(status_code=status.HTTP_409_CONFLICT)
+        if check_def:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Definition already exist")
 
-        new_def = Definition(content=definition.content, hash_data=_hash, type=_type)
+        new_def = Definition(content=definition.content, hash_data=_hash, type=_type, term=_term)
         await new_def.save()
-        await new_def.terms.add(_term)
-        return {
-            "def": new_def,
-            "term": _term
-        }
+        return DefinitionFullRelationFields(term=_term, type=_type, definition=new_def)
 
     @router.put("/roles", status_code=status.HTTP_200_OK)
     async def new_role(self, role: RolePy):
@@ -94,6 +138,23 @@ class MainServer:
             case False:
                 await (await Role.create(title=role.title)).save()
     
+
+    @router.get("/types", status_code=status.HTTP_200_OK, response_model=List[DefinitionTypeFullFields])
+    async def get_types(self):
+        return await DefinitionType.all()
+    
+    
+    @router.delete("/types/{type_id}", status_code=status.HTTP_200_OK)
+    async def delete_type(self, type_id: int):
+        return await DefinitionType.filter(type_id=type_id).delete()
+    
+    @router.post("/types", status_code=status.HTTP_200_OK, response_model=DefinitionTypeFullFields)
+    async def new_type(self, defType: DefinitionTypeShortFields):
+        exist = await DefinitionType.filter(title=defType.title).first()
+        if exist: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Type already exist")
+        _def = DefinitionType(title=defType.title)
+        await _def.save()
+        return _def
 
     @app.on_event("shutdown")
     async def on_shutdown():
