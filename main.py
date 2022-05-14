@@ -1,7 +1,6 @@
 import os
 import re
 from struct import pack
-from turtle import title
 from typing import List
 from bot import KosmoBot, terms
 from tortoise import Tortoise
@@ -63,6 +62,20 @@ class MainServer:
     async def get_terms(self):
        return await Term.all()
     
+    @router.get("/terms/{term_id}", status_code=status.HTTP_200_OK, response_model=TermFullFields)
+    async def get_term_by_id(self, term_id):
+       _term = await Term.filter(term_id=term_id).first()
+       if not _term: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Term not found")
+       return _term
+
+    @router.patch("/terms/{term_id}", status_code=status.HTTP_200_OK, response_model=TermFullFields)
+    async def get_term_by_id(self, term_id, term: TermShortFields):
+       _term = await Term.filter(term_id=term_id).first()
+       if not _term: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Term not found")
+       await Term.filter(term_id=term_id).update(title=term.title)
+
+       return await Term.filter(term_id=term_id).first()
+
     @router.get("/defs", status_code=status.HTTP_200_OK, response_model=List[DefinitionFullFields])
     async def get_defs(self, term: str):
         _term = await Term.filter(title=term.strip().lower()).first()

@@ -1,9 +1,9 @@
+
 from unicodedata import name
 from pydantic import (BaseModel,BaseSettings, Extra, Field)
-import pydantic
+from sqlalchemy import null
 from tortoise.contrib.pydantic import pydantic_model_creator
-from tortoise import Tortoise, fields, run_async
-from functools import partial
+from tortoise import fields
 from tortoise.models import Model
 from pydoc import describe
 from operator import index
@@ -13,25 +13,65 @@ from copy import deepcopy
 from pydantic.dataclasses import dataclass
 from enum import Enum
 from typing import ClassVar, Optional, Any, Union, Set, List, Dict
-from collections import defaultdict
 
 class DefinitionType(Model):
     type_id = fields.IntField(pk=True, unique=True)
     title = fields.CharField(max_length=300, unique=True, index=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
+
 class Definition(Model):
     id = fields.IntField(pk=True, unique=True)
     type = fields.ForeignKeyField("models.DefinitionType", related_name="type", null=True)
     term = fields.ForeignKeyField("models.Term", related_name="term", null=True)    
-    # terms: fields.ManyToManyRelation["Term"] = fields.ManyToManyField(
-    #     "models.Term", related_name="definitions", through="term_definitions", null=True
-    # )
+    authors: fields.ManyToManyRelation["Author"] = fields.ManyToManyField(
+        "models.Author", related_name="author", through="authors_definition", null=True
+    )
+
+    sources: fields.ManyToManyRelation["Source"] = fields.ManyToManyField(
+        "models.Source", related_name="source", through="sources_definition", null=True
+    )
 
     hash_data = fields.CharField(max_length=200, index=True)
 
     content = fields.TextField()
     created_at = fields.DatetimeField(auto_now_add=True)
+
+
+# Source ----
+class Source(Model):
+    title = fields.CharField(max_length=250, index=True)
+    definitions: fields.ManyToManyRelation[Definition]
+    type = fields.ForeignKeyField("models.SourceType", related_name="type")
+    links: fields.ManyToManyRelation["SourceLink"] = fields.ManyToManyField(
+        "models.SourceLink", related_name="links", through="links_sources", null=True
+    )
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+class SourceType(Model):
+    id = fields.IntField(pk=True, unique=True)
+    name = fields.CharField(max_length=250) #photo, video, magazine, blog post
+
+class LinkType(Model):
+    id = fields.IntField(pk=True, unique=True)
+    title = fields.CharField(max_length=250) #photo, video, magazine, blog post
+
+
+class SourceLink(Model):
+    id = fields.IntField(pk=True, unique=True)
+    link = fields.CharField(max_length=250, unique=True)
+    type = fields.ForeignKeyField("models.LinkType", related_name="type")
+
+# -----
+
+class Author(Model):
+    id = fields.IntField(pk=True, unique=True)
+    birth_date = fields.DateField(null=True)
+    firt_name = fields.CharField(max_length=100, index=True)
+    last_name = fields.CharField(max_length=100, index=True)
+    full_name = fields.CharField(max_length=100, index=True, null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    definitions: fields.ManyToManyRelation[Definition]
 
 class Term(Model):
     term_id = fields.IntField(pk=True, unique=True)
