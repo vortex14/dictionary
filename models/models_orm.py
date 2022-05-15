@@ -40,9 +40,10 @@ class Definition(Model):
 
 # Source ----
 class Source(Model):
-    title = fields.CharField(max_length=250, index=True)
+    id = fields.IntField(pk=True, unique=True)
+    title = fields.CharField(max_length=250, index=True, unique=True)
     definitions: fields.ManyToManyRelation[Definition]
-    type = fields.ForeignKeyField("models.SourceType", related_name="type")
+    type = fields.ForeignKeyField("models.SourceType", related_name="type", null=True)
     links: fields.ManyToManyRelation["SourceLink"] = fields.ManyToManyField(
         "models.SourceLink", related_name="links", through="links_sources", null=True
     )
@@ -62,8 +63,13 @@ class SourceLink(Model):
     link = fields.CharField(max_length=250, unique=True)
     type = fields.ForeignKeyField("models.LinkType", related_name="type")
 
+SourcePy = pydantic_model_creator(Source)
+SourceShortFields = pydantic_model_creator(Source, exclude=('id', 'definitions', 'created_at'), name="SourceShortFields")
+
 # -----
 
+
+# Author
 class Author(Model):
     id = fields.IntField(pk=True, unique=True)
     birth_date = fields.DateField(null=True)
@@ -72,6 +78,10 @@ class Author(Model):
     full_name = fields.CharField(max_length=100, index=True, null=True)
     created_at = fields.DatetimeField(auto_now_add=True)
     definitions: fields.ManyToManyRelation[Definition]
+    
+AuthorPy = pydantic_model_creator(Author)
+AuthorShortFields = pydantic_model_creator(Author, exclude=('id', 'definitions', 'created_at'), name="AuthorShortFields")
+# --------
 
 class Term(Model):
     term_id = fields.IntField(pk=True, unique=True)
