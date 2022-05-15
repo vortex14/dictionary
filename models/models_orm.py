@@ -51,21 +51,45 @@ class Source(Model):
 
 class SourceType(Model):
     id = fields.IntField(pk=True, unique=True)
-    name = fields.CharField(max_length=250) #photo, video, magazine, blog post
+    name = fields.CharField(max_length=250, unique=True) #photo, video, magazine, blog post
+    created_at = fields.DatetimeField(auto_now_add=True)
 
 class LinkType(Model):
     id = fields.IntField(pk=True, unique=True)
-    title = fields.CharField(max_length=250) #photo, video, magazine, blog post
+    title = fields.CharField(max_length=250, unique=True) #photo, video, magazine, blog post
+    created_at = fields.DatetimeField(auto_now_add=True)
 
 
 class SourceLink(Model):
     id = fields.IntField(pk=True, unique=True)
     link = fields.CharField(max_length=250, unique=True)
-    type = fields.ForeignKeyField("models.LinkType", related_name="type")
+    type = fields.ForeignKeyField("models.LinkType", related_name="type", null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
 
 SourcePy = pydantic_model_creator(Source)
+SourceTypePy = pydantic_model_creator(SourceType)
+SourceTypeShortFields = pydantic_model_creator(SourceType, name="SourceTypeShortFields", exclude=('id', 'created_at'))
 SourceShortFields = pydantic_model_creator(Source, exclude=('id', 'definitions', 'created_at'), name="SourceShortFields")
 
+SourceLinkPy = pydantic_model_creator(SourceLink)
+SourceLinkShortFields = pydantic_model_creator(SourceLink, exclude=('id', 'created_at'), name="SourceLinkShortFields")
+
+LinkTypePy = pydantic_model_creator(LinkType)
+LinkTypeShortFields = pydantic_model_creator(LinkType, exclude=('id', 'created_at'), name="LinkTypeShortFields")
+
+class LinkFullRelationFields(BaseModel):
+    class Config:
+        title = "LinkFullRelationFields"
+
+    link: SourceLinkPy
+    type: LinkTypePy = None
+
+class SoureFullRelationFields(BaseModel):
+    class Config:
+        title = "SoureFullRelationFields"
+
+    source: SourcePy
+    type: SourceTypePy = None
 # -----
 
 

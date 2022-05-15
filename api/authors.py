@@ -1,13 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
 from logger import typhoon_logger
-from utils import get_hash
 from typing import List
 
 
-from models.models_orm import (Author, DefinitionType, Role, Term, User, RolePy, DefinitionFullRelationFields, TermShortFields, TermFullFields, DefinitionFullFields, 
-                               DefinitionShortFields, DefinitionTypeShortFields, DefinitionTypeFullFields, TermFullFields, DefinitionFullFields, DefinitionShortRelationFields, DefinitionShortRelations,
-                               SourcePy, Source, SourceShortFields, AuthorPy, AuthorShortFields, Definition
-                               )
+from models.models_orm import ( Author, AuthorPy, AuthorShortFields )
 
 LOG = typhoon_logger(name="api-authors", component="api", level="DEBUG")
 

@@ -15,7 +15,7 @@ from models.models_orm import (Author, DefinitionType, Role, Term, User, RolePy,
 from utils import get_hash
 from fastapi_utils.inferring_router import InferringRouter
 from fastapi import Depends, FastAPI, status, HTTPException
-from api import author_router, def_router, term_router, type_router, role_router, source_router
+from api import author_router, def_router, term_router, type_router, role_router, source_router, link_router
 
 app = FastAPI()
 bot = KosmoBot()
@@ -59,5 +59,5 @@ class MainServer:
     async def on_shutdown():
         await bot.close()
 
-for route in [router, author_router, term_router, def_router, type_router, role_router, source_router]:
+for route in [router, author_router, term_router, def_router, type_router, role_router, source_router, link_router]:
     app.include_router(route)

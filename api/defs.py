@@ -3,9 +3,8 @@ from logger import typhoon_logger
 from utils import get_hash
 from typing import List
 
-from models.models_orm import (Author, DefinitionType, Role, Term, User, RolePy, DefinitionFullRelationFields, TermShortFields, TermFullFields, DefinitionFullFields, 
-                               DefinitionShortFields, DefinitionTypeShortFields, DefinitionTypeFullFields, TermFullFields, DefinitionFullFields, DefinitionShortRelationFields, DefinitionShortRelations,
-                               SourcePy, Source, SourceShortFields, AuthorPy, AuthorShortFields, Definition
+from models.models_orm import (Definition, Author, DefinitionType, Term, DefinitionFullRelationFields, DefinitionShortRelationFields, DefinitionShortRelations,
+                               DefinitionFullFields, DefinitionFullFields, AuthorPy
                                )
 
 LOG = typhoon_logger(name="api-defs", component="api", level="DEBUG")

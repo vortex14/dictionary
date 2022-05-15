@@ -4,10 +4,7 @@ from utils import get_hash
 from typing import List
 
 
-from models.models_orm import (Author, DefinitionType, Role, Term, User, RolePy, DefinitionFullRelationFields, TermShortFields, TermFullFields, DefinitionFullFields, 
-                               DefinitionShortFields, DefinitionTypeShortFields, DefinitionTypeFullFields, TermFullFields, DefinitionFullFields, DefinitionShortRelationFields, DefinitionShortRelations,
-                               SourcePy, Source, SourceShortFields, AuthorPy, AuthorShortFields, Definition
-                               )
+from models.models_orm import ( Role, RolePy )
 
 LOG = typhoon_logger(name="api-roles", component="api", level="DEBUG")
 
