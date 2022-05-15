@@ -31,6 +31,12 @@ class MainServer:
             if not (await Role.filter(title=role).count()):
                 await Role(title=role).save()
         
+    @app.get("/")
+    def get_base():
+        return {
+            "status": True
+        }
+    
     @app.on_event("startup")
     async def on_startup():
         LOG.info("starting server ...")
@@ -53,5 +59,5 @@ class MainServer:
     async def on_shutdown():
         await bot.close()
 
-for route in [router, author_router, term_router, def_router, type_router, role_router]:
+for route in [router, author_router, term_router, def_router, type_router, role_router, source_router]:
     app.include_router(route)
