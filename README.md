@@ -1,3 +1,5 @@
+![alt text](schema.jpg "Schema")
+
 ## Установка зависимостей
 ``` 
 ./install.sh 
