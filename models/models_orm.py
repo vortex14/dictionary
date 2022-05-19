@@ -1,18 +1,18 @@
 
-from unicodedata import name
-from pydantic import (BaseModel,BaseSettings, Extra, Field)
-from sqlalchemy import null
+from typing import ClassVar, Optional, Any, Union, Set, List, Dict
 from tortoise.contrib.pydantic import pydantic_model_creator
-from tortoise import fields
+from pydantic import (BaseModel,BaseSettings, Extra, Field)
+from pydantic.dataclasses import dataclass
 from tortoise.models import Model
+from unicodedata import name
+from sqlalchemy import null
+from tortoise import fields
 from pydoc import describe
 from operator import index
+from copy import deepcopy
 from typing import Tuple
 from enum import unique
-from copy import deepcopy
-from pydantic.dataclasses import dataclass
 from enum import Enum
-from typing import ClassVar, Optional, Any, Union, Set, List, Dict
 
 class DefinitionType(Model):
     type_id = fields.IntField(pk=True, unique=True)
@@ -157,9 +157,17 @@ class DefinitionFullRelationFields(BaseModel):
     class Config:
         title = "DefinitionFullRelations"
 
-    term: TermFullFields = None
-    type: DefinitionTypeFullFields = None
     definition: DefinitionFullFields = None
+    sources: List[SourcePy] = None
+    authors: List[AuthorPy] = None
+
+class DefinitionsFullRelationFields(BaseModel):
+    class Config:
+        title = "DefinitionsFullRelations"
+    
+    term: TermFullFields = None
+    definitions: List[DefinitionFullRelationFields] = None
+
 
 class DefinitionShortRelationFields(DefinitionShortFields):
     class Config:
@@ -168,6 +176,8 @@ class DefinitionShortRelationFields(DefinitionShortFields):
     content: str = None    
     term: TermShortFields = None
     type: DefinitionTypeShortFields = None
+    authors: List[AuthorShortFields] = None
+    sources: List[SourceShortFields] = None
 
 async def get_user(source_user: dict) -> Tuple[Role, User]:
     last_name = source_user["last_name"]

@@ -5,7 +5,7 @@ from typing import List
 
 from models.models_orm import ( LinkType, LinkTypePy, LinkTypeShortFields, SourceLink, SourceLinkPy, SourceLinkShortFields, LinkFullRelationFields )
 
-LOG = typhoon_logger(name="api-sources", component="api", level="DEBUG")
+LOG = typhoon_logger(name="api-links", component="api", level="DEBUG")
 
 router = APIRouter(prefix='/links', tags=["links"])
 

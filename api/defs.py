@@ -3,7 +3,7 @@ from logger import typhoon_logger
 from utils import get_hash
 from typing import List
 
-from models.models_orm import (Definition, Author, DefinitionType, Term, DefinitionFullRelationFields, DefinitionShortRelationFields, DefinitionShortRelations,
+from models.models_orm import (Definition, Author, DefinitionType, DefinitionsFullRelationFields, Source, SourcePy, Term, DefinitionFullRelationFields, DefinitionShortRelationFields, DefinitionShortRelations,
                                DefinitionFullFields, DefinitionFullFields, AuthorPy
                                )
 
@@ -18,6 +18,18 @@ async def get_defs(term: str):
     if not _term:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return await Definition.filter(term=_term)
+
+@router.get("/relations", status_code=status.HTTP_200_OK, response_model=DefinitionsFullRelationFields)
+async def get_full_relations_defs(term: str):
+    _term = await Term.filter(title=term.strip().lower()).first()
+    if not _term:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    _defs = []
+    
+    for _def in await Definition.filter(term=_term):
+        _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def))
+
+    return DefinitionsFullRelationFields(definitions=_defs, term=_term)
 
 @router.post("/{def_id}/authors", status_code=status.HTTP_200_OK)
 async def add_authors_def(def_id: int, authors: List[int]):
@@ -44,12 +56,43 @@ async def add_authors_def(def_id: int, authors: List[int]):
         "status": True
     }
 
+@router.post("/{def_id}/sources", status_code=status.HTTP_200_OK)
+async def add_sources_def(def_id: int, sources: List[int]):
+    exist = await Definition.filter(id=def_id).first()
+    if not exist:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Definition not found")
+
+    exist_sources = set(_source.id for _source in await exist.sources.all())
+
+    diff = set(sources) - exist_sources
+    LOG.info("sources", details={"ids": exist_sources, "diff": list(diff)})
+    
+    _sources = []
+    if len(diff) == 0:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found a new sources")
+    elif len(diff) > 0:
+        for source_id in sources:
+            _source = await Source.filter(id=source_id).first()
+            if not source_id: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Source_id: {source_id} not found")
+            _sources.append(_source)
+
+        for _source in _sources: await exist.sources.add(_source)
+    return {
+        "status": True
+    }
+
 @router.get("/{def_id}/authors", status_code=status.HTTP_200_OK, response_model=List[AuthorPy])
 async def get_defs_by_id(def_id: int):
     _def = await Definition.filter(id=def_id).first()
     if not _def: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return [it for it in await _def.authors]    
-    
+
+@router.get("/{def_id}/sources", status_code=status.HTTP_200_OK, response_model=List[SourcePy])
+async def get_sources_by_id(def_id: int):
+    _def = await Definition.filter(id=def_id).first()
+    if not _def: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return [it for it in await _def.sources]  
+
 @router.get("/{def_id}", status_code=status.HTTP_200_OK)
 async def get_defs_by_id(def_id: int):
     _def = await Definition.filter(id=def_id).first()
