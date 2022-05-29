@@ -7,6 +7,7 @@ from tortoise import Tortoise
 from fastapi import APIRouter
 from logger import typhoon_logger
 from models import ADMIN, UNKNOWN, Definition
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi_utils.cbv import cbv
 from models.models_orm import (Author, DefinitionType, Role, Term, User, RolePy, DefinitionFullRelationFields, TermShortFields, TermFullFields, DefinitionFullFields, 
                                DefinitionShortFields, DefinitionTypeShortFields, DefinitionTypeFullFields, TermFullFields, DefinitionFullFields, DefinitionShortRelationFields, DefinitionShortRelations,
@@ -18,6 +19,21 @@ from fastapi import Depends, FastAPI, status, HTTPException
 from api import author_router, def_router, term_router, type_router, role_router, source_router, link_router
 
 app = FastAPI()
+
+origins = [
+    "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:8080",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 bot = KosmoBot()
 router = InferringRouter()
 
