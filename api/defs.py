@@ -33,6 +33,9 @@ async def get_full_relations_defs(term: str, source_id: int):
     for _def in await Definition.filter(term=_term, sources=_source):
         _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def))
 
+    if not _defs: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"definitions by source_id : {source_id} not found")
+
+
     return DefinitionsFullRelationFields(definitions=_defs, term=_term)
 
 @router.post("/{def_id}/authors", status_code=status.HTTP_200_OK)
