@@ -19,6 +19,8 @@ class DefinitionType(Model):
     title = fields.CharField(max_length=300, unique=True, index=True)
     created_at = fields.DatetimeField(auto_now_add=True)
 
+class DefinitionSource(BaseModel):
+    source_id: int
 
 class Definition(Model):
     id = fields.IntField(pk=True, unique=True)

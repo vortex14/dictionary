@@ -4,7 +4,7 @@ from utils import get_hash
 from typing import List
 
 from models.models_orm import (Definition, Author, DefinitionType, DefinitionsFullRelationFields, Source, SourcePy, Term, DefinitionFullRelationFields, DefinitionShortRelationFields, DefinitionShortRelations,
-                               DefinitionFullFields, DefinitionFullFields, AuthorPy
+                               DefinitionFullFields, DefinitionFullFields, AuthorPy, DefinitionSource
                                )
 
 LOG = typhoon_logger(name="api-defs", component="api", level="DEBUG")
@@ -64,26 +64,18 @@ async def add_authors_def(def_id: int, authors: List[int]):
     }
 
 @router.post("/{def_id}/sources", status_code=status.HTTP_200_OK)
-async def add_sources_def(def_id: int, sources: List[int]):
+async def add_sources_def(def_id: int, source: DefinitionSource):
     exist = await Definition.filter(id=def_id).first()
     if not exist:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Definition not found")
 
-    exist_sources = set(_source.id for _source in await exist.sources.all())
-
-    diff = set(sources) - exist_sources
-    LOG.info("sources", details={"ids": exist_sources, "diff": list(diff)})
+    LOG.info("add a new source", details={"id": source.source_id})
     
-    _sources = []
-    if len(diff) == 0:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found a new sources")
-    elif len(diff) > 0:
-        for source_id in sources:
-            _source = await Source.filter(id=source_id).first()
-            if not source_id: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Source_id: {source_id} not found")
-            _sources.append(_source)
+    _source = await Source.filter(id=source.source_id).first()
+    if not _source: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Source_id: {source.source_id} not found")
+    await exist.sources.clear()
+    await exist.sources.add(_source)
 
-        for _source in _sources: await exist.sources.add(_source)
     return {
         "status": True
     }
