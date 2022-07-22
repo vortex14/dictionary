@@ -20,21 +20,19 @@ async def get_defs(term: str):
     return await Definition.filter(term=_term)
 
 @router.get("/relations", status_code=status.HTTP_200_OK, response_model=DefinitionsFullRelationFields)
-async def get_full_relations_defs(term: str, source_id: int):
+async def get_full_relations_defs(term: str, source_id: int = None):
     _term = await Term.filter(title=term.strip().lower()).first()
     if not _term:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     _defs = []
     
-    _source = await Source.filter(id=source_id).first()
-    if not _source: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Source_id: {source_id} not found")
-
+    if source_id:
+        _source = await Source.filter(id=source_id).first()
+    else:
+        _source = await Source.filter().first()
 
     for _def in await Definition.filter(term=_term, sources=_source):
         _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def))
-
-    if not _defs: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"definitions by source_id : {source_id} not found")
-
 
     return DefinitionsFullRelationFields(definitions=_defs, term=_term)
 
