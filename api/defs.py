@@ -28,11 +28,13 @@ async def get_full_relations_defs(term: str, source_id: int = None):
     
     if source_id:
         _source = await Source.filter(id=source_id).first()
+        for _def in await Definition.filter(term=_term, sources=_source):
+            _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def))
     else:
-        _source = None
+        for _def in await Definition.filter(term=_term):
+            _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def))
 
-    for _def in await Definition.filter(term=_term, sources=_source):
-        _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def))
+    
 
     return DefinitionsFullRelationFields(definitions=_defs, term=_term)
 
