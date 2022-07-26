@@ -69,9 +69,10 @@ class SourceLink(Model):
     created_at = fields.DatetimeField(auto_now_add=True)
 
 SourcePy = pydantic_model_creator(Source)
+SourceShortPyFields = pydantic_model_creator(Source, name="SourceShortPyFields", exclude=('title', 'created_at'))
 SourceTypePy = pydantic_model_creator(SourceType)
 SourceTypeShortFields = pydantic_model_creator(SourceType, name="SourceTypeShortFields", exclude=('id', 'created_at'))
-SourceShortFields = pydantic_model_creator(Source, exclude=('id', 'definitions', 'created_at'), name="SourceShortFields")
+SourceShortFields = pydantic_model_creator(Source, exclude=('title', 'definitions', 'created_at'), name="SourceShortFields")
 
 SourceLinkPy = pydantic_model_creator(SourceLink)
 SourceLinkShortFields = pydantic_model_creator(SourceLink, exclude=('id', 'created_at'), name="SourceLinkShortFields")
@@ -152,7 +153,7 @@ class DefinitionShortRelations(DefinitionShortFields):
         title = "DefinitionShortRelations"
 
     term: TermShortFields
-    type: DefinitionTypeShortFields
+    source: SourceShortPyFields
 
 
 class DefinitionFullRelationFields(BaseModel):
@@ -177,7 +178,6 @@ class DefinitionShortRelationFields(DefinitionShortFields):
     
     content: str = None    
     term: TermShortFields = None
-    type: DefinitionTypeShortFields = None
     authors: List[AuthorShortFields] = None
     sources: List[SourceShortFields] = None
 

@@ -103,7 +103,7 @@ async def get_defs_by_id(def_id: int):
 async def update_def_by_id(def_id, definition: DefinitionShortRelationFields):
     _def = await Definition.filter(id=def_id).first()
     _term = None
-    _type = None
+    _source = None
     payload = {}
 
     if not _def:
@@ -112,42 +112,41 @@ async def update_def_by_id(def_id, definition: DefinitionShortRelationFields):
     if  definition.term:
         _term = await Term.filter(title=definition.term.title).first()
         if not _term: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Term not found")
-
-    if definition.type:
-        _type = await DefinitionType.filter(title=definition.type.title).first()
-        if not _type: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Type not found")
     
     if definition.content:
         payload["content"] = definition.content
         payload["hash_data"] = get_hash(definition.content.lower())
-
-    if _type:
-        payload["type"] = _type
     
     if _term:
         payload["term"] = _term
+    
+    if definition.sources:
+        _s = await Source.filter(id=definition.sources[0].id).first()
+        if not _s: raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")
+        await _def.sources.clear()
+        await _def.sources.add(_s)
 
     if payload:
         await Definition.filter(id=def_id).update(**payload)
     
-    _type = await _def.type
     _term = await _def.term
 
-    return DefinitionFullRelationFields(definition=_def, type=_type, term=_term)
+    return DefinitionFullRelationFields(definition=_def, term=_term)
 
 @router.post("/", status_code=status.HTTP_200_OK, response_model=DefinitionFullRelationFields)
 async def post_def(definition: DefinitionShortRelations):
     _term = await Term.filter(title=definition.term.title).first()
     if not _term: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Term not found")
-    _type = await DefinitionType.filter(title=definition.type.title).first()
-    if not _type: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Type not found")
+    _source = await Source.filter(id=definition.source.id).first()
+    if not _source: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Source not found")
     _hash = get_hash(definition.content.lower())
     check_def = await Definition.filter(hash_data=_hash).first()
     if check_def:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Definition already exist")
-
-    new_def = Definition(content=definition.content, hash_data=_hash, type=_type, term=_term)
+    print(_source)
+    new_def = Definition(content=definition.content, hash_data=_hash, term=_term)
     await new_def.save()
-    return DefinitionFullRelationFields(term=_term, type=_type, definition=new_def)
+    await new_def.sources.add(_source)
+    return DefinitionFullRelationFields(term=_term, definition=new_def, sources=await new_def.sources, authors=await new_def.authors)
 
     
