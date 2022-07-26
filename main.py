@@ -69,5 +69,5 @@ class MainServer:
     async def on_shutdown():
         await bot.close()
 
-for route in [router, author_router, term_router, def_router, type_router, role_router, source_router, link_router]:
+for route in [router, author_router, term_router, def_router, role_router, source_router, link_router]:
     app.include_router(route)
