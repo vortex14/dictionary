@@ -1,8 +1,11 @@
-from fastapi import APIRouter, HTTPException, status
+from doctest import Example
+from time import sleep
+from fastapi import APIRouter, HTTPException, status, Depends
 from logger import typhoon_logger
 from utils import get_hash
 from typing import List
-
+import asyncio
+from tortoise.transactions import in_transaction
 from models.models_orm import (Definition, Author, DefinitionType, DefinitionsFullRelationFields, Source, SourcePy, Term, DefinitionFullRelationFields, DefinitionShortRelationFields, DefinitionShortRelations,
                                DefinitionFullFields, DefinitionFullFields, AuthorPy, DefinitionSource
                                )
@@ -133,20 +136,62 @@ async def update_def_by_id(def_id, definition: DefinitionShortRelationFields):
 
     return DefinitionFullRelationFields(definition=_def, term=_term)
 
-@router.post("/", status_code=status.HTTP_200_OK, response_model=DefinitionFullRelationFields)
-async def post_def(definition: DefinitionShortRelations):
-    _term = await Term.filter(title=definition.term.title).first()
-    if not _term: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Term not found")
-    _source = await Source.filter(id=definition.source.id).first()
-    if not _source: raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Source not found")
-    _hash = get_hash(definition.content.lower())
-    check_def = await Definition.filter(hash_data=_hash).first()
-    if check_def:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Definition already exist")
-    print(_source)
-    new_def = Definition(content=definition.content, hash_data=_hash, term=_term)
-    await new_def.save()
-    await new_def.sources.add(_source)
-    return DefinitionFullRelationFields(term=_term, definition=new_def, sources=await new_def.sources, authors=await new_def.authors)
 
+class ConcurrentLocker:
+    _instance = None
+    lock = None
+    
+    def __new__(cls, *args, **kwargs):
+        if not ConcurrentLocker._instance:
+            ConcurrentLocker.lock = asyncio.Lock()
+            ConcurrentLocker._instance = super(ConcurrentLocker, \
+               cls).__new__(cls, *args, **kwargs)
+        return ConcurrentLocker._instance
+
+    def release(self):
+        ConcurrentLocker.lock.release()
+
+    def is_locked(self) -> bool:
+        return ConcurrentLocker.lock.locked()
+
+async def locker() -> ConcurrentLocker:
+    try:
+        c = ConcurrentLocker()
+        while c.is_locked():
+            await asyncio.sleep(0)
+        yield c
+    except Exception as e:
+        pass
+
+@router.post("/", status_code=status.HTTP_200_OK)
+async def post_def(definition: DefinitionShortRelations, locker: ConcurrentLocker = Depends(locker)):
+
+
+    async with locker.lock:
+        _source = None
+
+        if definition.source:
+            _source = await Source.filter(title=definition.source.title).first()
+            
+            if not _source:
+                _source = await Source.create(title=definition.source.title)
+
+
+        _term = await Term.filter(title=definition.term.title).first()
+        if _term is None: 
+            await Term(title=definition.term.title).save()
+        
+        _hash = get_hash(definition.content.lower())
+        
+        check_def = await Definition.filter(hash_data=_hash).first()
+        if isinstance(check_def, Definition):
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Definition already exist")
+
+        new_def = Definition(content=definition.content, hash_data=_hash, term=_term)
+        await new_def.save()
+        
+        if _source: 
+            await new_def.sources.add(_source)
+    
+    return DefinitionFullRelationFields(term=_term, definition=new_def, sources=await new_def.sources, authors=await new_def.authors)
     

@@ -14,6 +14,22 @@ router = APIRouter(prefix='/terms', tags=["terms"])
 async def get_terms():
     return await Term.all()
 
+@router.post("/", status_code=status.HTTP_200_OK, response_model=TermFullFields)
+async def post_term(term: TermShortFields):
+    _term = await Term.exists(title=term.title)
+
+    match _term:
+        case True:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Term already exist!")
+        case False:
+            term = await Term.create(title=term.title)
+            return term
+
+@router.delete("/{term_id}", status_code=status.HTTP_200_OK)
+async def delete_term(term_id: int):
+    LOG.debug(f"remove term by id: {term_id}")
+    await Term.filter(term_id=term_id).delete()
+
 @router.get("/{term_id}", status_code=status.HTTP_200_OK, response_model=TermFullFields)
 async def get_term_by_id(term_id):
     _term = await Term.filter(term_id=term_id).first()

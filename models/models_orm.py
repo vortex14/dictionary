@@ -22,9 +22,17 @@ class DefinitionType(Model):
 class DefinitionSource(BaseModel):
     source_id: int
 
+
+# определение может быть не закончено, может быть не одобрено, может быть ошибочно, может быть готово к публикации, может быть опубликовано
+class DefinitionStatus(Model):
+    pass
+
+# любой источник должен входить в некую категория и иметь подкатегории. 
+class SourceCategory(Model):
+    pass
+
 class Definition(Model):
     id = fields.IntField(pk=True, unique=True)
-    type = fields.ForeignKeyField("models.DefinitionType", related_name="type", null=True)
     term = fields.ForeignKeyField("models.Term", related_name="term", null=True)    
     authors: fields.ManyToManyRelation["Author"] = fields.ManyToManyField(
         "models.Author", related_name="author", through="authors_definition", null=True
@@ -34,7 +42,7 @@ class Definition(Model):
         "models.Source", related_name="source", through="sources_definition", null=True
     )
 
-    hash_data = fields.CharField(max_length=200, index=True)
+    hash_data = fields.CharField(max_length=200, index=True, unique=True)
 
     content = fields.TextField()
     created_at = fields.DatetimeField(auto_now_add=True)
@@ -69,7 +77,7 @@ class SourceLink(Model):
     created_at = fields.DatetimeField(auto_now_add=True)
 
 SourcePy = pydantic_model_creator(Source)
-SourceShortPyFields = pydantic_model_creator(Source, name="SourceShortPyFields", exclude=('title', 'created_at'))
+SourceShortPyFields = pydantic_model_creator(Source, name="SourceShortPyFields", exclude=('id', 'created_at'))
 SourceTypePy = pydantic_model_creator(SourceType)
 SourceTypeShortFields = pydantic_model_creator(SourceType, name="SourceTypeShortFields", exclude=('id', 'created_at'))
 SourceShortFields = pydantic_model_creator(Source, exclude=('title', 'definitions', 'created_at'), name="SourceShortFields")
@@ -153,7 +161,7 @@ class DefinitionShortRelations(DefinitionShortFields):
         title = "DefinitionShortRelations"
 
     term: TermShortFields
-    source: SourceShortPyFields
+    source: SourceShortPyFields = None
 
 
 class DefinitionFullRelationFields(BaseModel):
