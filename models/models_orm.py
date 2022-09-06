@@ -25,7 +25,13 @@ class DefinitionSource(BaseModel):
 
 # определение может быть не закончено, может быть не одобрено, может быть ошибочно, может быть готово к публикации, может быть опубликовано
 class DefinitionStatus(Model):
-    pass
+    id = fields.IntField(pk=True, unique=True)
+    title = fields.CharField(max_length=300, unique=True, index=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+DefinitionStatusPy = pydantic_model_creator(DefinitionStatus)
+DefinitionStatusShortFields = pydantic_model_creator(DefinitionStatus, exclude=('id', 'created_at'), name="DefinitionStatusShortFields")
+
 
 # любой источник должен входить в некую категория и иметь подкатегории. 
 class SourceCategory(Model):
@@ -33,7 +39,8 @@ class SourceCategory(Model):
 
 class Definition(Model):
     id = fields.IntField(pk=True, unique=True)
-    term = fields.ForeignKeyField("models.Term", related_name="term", null=True)    
+    term = fields.ForeignKeyField("models.Term", related_name="term", null=True)
+    status = fields.ForeignKeyField("models.DefinitionStatus", related_name="definition_status")
     authors: fields.ManyToManyRelation["Author"] = fields.ManyToManyField(
         "models.Author", related_name="author", through="authors_definition", null=True
     )
@@ -161,7 +168,9 @@ class DefinitionShortRelations(DefinitionShortFields):
         title = "DefinitionShortRelations"
 
     term: TermShortFields
-    source: SourceShortPyFields = None
+    status: DefinitionStatusShortFields
+    sources: List[SourceShortPyFields] = None
+    authors: List[AuthorShortFields] = None
 
 
 class DefinitionFullRelationFields(BaseModel):
@@ -171,6 +180,7 @@ class DefinitionFullRelationFields(BaseModel):
     definition: DefinitionFullFields = None
     sources: List[SourcePy] = None
     authors: List[AuthorPy] = None
+    status: DefinitionStatusPy
 
 class DefinitionsFullRelationFields(BaseModel):
     class Config:
