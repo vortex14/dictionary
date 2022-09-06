@@ -1,6 +1,3 @@
-from doctest import Example
-from time import sleep
-from turtle import title
 from fastapi import APIRouter, HTTPException, status, Depends
 from logger import typhoon_logger
 from utils import get_hash
