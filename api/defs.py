@@ -38,24 +38,23 @@ async def get_defs(term: str):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return await Definition.filter(term=_term)
 
-@router.get("/relations", status_code=status.HTTP_200_OK, response_model=DefinitionsFullRelationFields)
-async def get_full_relations_defs(term: str, source_id: int = None):
-    _term = await Term.filter(title=term.strip().lower()).first()
-    if not _term:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
-    _defs = []
-    
-    if source_id:
-        _source = await Source.filter(id=source_id).first()
-        for _def in await Definition.filter(term=_term, sources=_source):
-            _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def, status=await _def.status))
-    else:
-        for _def in await Definition.filter(term=_term):
-            _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def, status=await _def.status))
+@router.get("/relations", status_code=status.HTTP_200_OK, response_model=List[DefinitionsFullRelationFields])
+async def get_full_relations_defs(search: str, source_id: int = None):
+    response = []
+    for _term in await Term.filter(title__icontains=search.strip().lower()).all():
+        _defs = []
+        if source_id:
+            _source = await Source.filter(id=source_id).first()
+            for _def in await Definition.filter(term=_term, sources=_source):
+                _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def, status=await _def.status))
+        else:
+            for _def in await Definition.filter(term=_term):
+                _defs.append(DefinitionFullRelationFields(sources=await _def.sources, authors=await _def.authors, definition=_def, status=await _def.status))
 
-    
+        response.append(DefinitionsFullRelationFields(definitions=_defs, term=_term))
 
-    return DefinitionsFullRelationFields(definitions=_defs, term=_term)
+    return response
+        
 
 @router.post("/{def_id}/authors", status_code=status.HTTP_200_OK)
 async def add_authors_def(def_id: int, authors: List[int]):

@@ -1,3 +1,4 @@
+from operator import iconcat
 from fastapi import APIRouter, HTTPException, status
 from logger import typhoon_logger
 from utils import get_hash
@@ -11,8 +12,12 @@ LOG = typhoon_logger(name="api-terms", component="api", level="DEBUG")
 router = APIRouter(prefix='/terms', tags=["terms"])
 
 @router.get("/", status_code=status.HTTP_200_OK, response_model=List[TermFullFields])
-async def get_terms():
-    return await Term.all()
+async def get_terms(search: str = None):
+    if not search:
+        return await Term.all()
+    else:
+        return await Term.filter(title__icontains=search).all()
+
 
 @router.post("/", status_code=status.HTTP_200_OK, response_model=TermFullFields)
 async def post_term(term: TermShortFields):
