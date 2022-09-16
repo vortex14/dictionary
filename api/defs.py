@@ -1,17 +1,22 @@
 from fastapi import APIRouter, HTTPException, status, Depends
 from logger import typhoon_logger
-from utils import get_hash
+from utils import get_hash, locker, ConcurrentLocker
 from typing import List
 import asyncio
 from tortoise.transactions import in_transaction
-from models.models_orm import (Definition, Author, DefinitionStatusPy, DefinitionStatusShortFields, DefinitionType, DefinitionsFullRelationFields, Source, SourcePy, Term, DefinitionFullRelationFields, DefinitionShortRelationFields, DefinitionShortRelations,
-                               DefinitionFullFields, DefinitionFullFields, AuthorPy, DefinitionSource, DefinitionStatus
+from models.models_orm import (Definition, Author, DefinitionStatusPy, DefinitionStatusShortFields, DefinitionType, DefinitionsFullRelationFields, Source, SourceCategory, SourcePy, Term, DefinitionFullRelationFields, DefinitionShortRelationFields, DefinitionShortRelations,
+                               DefinitionFullFields, DefinitionFullFields, AuthorPy, DefinitionSource, DefinitionStatus, SourceRelationsPy
                                )
 
 LOG = typhoon_logger(name="api-defs", component="api", level="DEBUG")
 
 router = APIRouter(prefix='/defs', tags=["defintions"])
 
+
+
+@router.get("/status", status_code=status.HTTP_200_OK, response_model=List[DefinitionStatusPy])
+async def def_status():
+    return await DefinitionStatus.filter().all()
 
 @router.post("/status", status_code=status.HTTP_200_OK, response_model=DefinitionStatusPy)
 async def post_def_status(statusDef: DefinitionStatusShortFields):
@@ -24,11 +29,8 @@ async def post_def_status(statusDef: DefinitionStatusShortFields):
 
 @router.delete("/status/{status_id}", status_code=status.HTTP_200_OK, response_model=DefinitionStatusPy)
 async def delete_def_status(status_id: int):
-    await DefinitionStatus.filter(id=status_id).delete()   
+    await DefinitionStatus.filter(id=status_id).delete()
 
-@router.get("/status", status_code=status.HTTP_200_OK, response_model=List[DefinitionStatusPy])
-async def def_status():
-    return await DefinitionStatus.filter().all()
 
 
 @router.get("/", status_code=status.HTTP_200_OK, response_model=List[DefinitionFullFields])
@@ -117,6 +119,11 @@ async def get_defs_by_id(def_id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
     return _def
 
+@router.delete("/{def_id}", status_code=status.HTTP_200_OK)
+async def delete_defs_by_id(def_id: int):
+    await Definition.filter(id=def_id).delete()
+    return
+
 @router.patch("/{def_id}", status_code=status.HTTP_200_OK, response_model=DefinitionFullRelationFields)
 async def update_def_by_id(def_id, definition: DefinitionShortRelationFields):
     _def = await Definition.filter(id=def_id).first()
@@ -150,32 +157,6 @@ async def update_def_by_id(def_id, definition: DefinitionShortRelationFields):
     _term = await _def.term
 
     return DefinitionFullRelationFields(definition=_def, term=_term)
-
-
-class ConcurrentLocker:
-    _instance = None
-    lock = None
-    
-    def __new__(cls, *args, **kwargs):
-        if not ConcurrentLocker._instance:
-            ConcurrentLocker.lock = asyncio.Lock()
-            ConcurrentLocker._instance = super(ConcurrentLocker, \
-               cls).__new__(cls, *args, **kwargs)
-        return ConcurrentLocker._instance
-
-    def is_locked(self) -> bool:
-        return ConcurrentLocker.lock.locked()
-
-async def locker() -> ConcurrentLocker:
-    try:
-        c = ConcurrentLocker()
-        while c.is_locked():
-            await asyncio.sleep(0)
-        yield c
-    except Exception as e:
-        pass
-
-
 
 
 

@@ -3,6 +3,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from aiogram.dispatcher.filters import BoundFilter
 from typing import List, Union
 import hashlib, re
+import asyncio
 
 P_R_HTML = re.compile("<[p].*?>")
 REMOVE_HTML = re.compile("<[^>]*>")
@@ -56,3 +57,29 @@ def remove_html_p(content: str) -> str:
 
 def remove_html(content: str) -> str:
     return re.sub(REMOVE_HTML, "", content)
+
+
+
+
+class ConcurrentLocker:
+    _instance = None
+    lock = None
+    
+    def __new__(cls, *args, **kwargs):
+        if not ConcurrentLocker._instance:
+            ConcurrentLocker.lock = asyncio.Lock()
+            ConcurrentLocker._instance = super(ConcurrentLocker, \
+               cls).__new__(cls, *args, **kwargs)
+        return ConcurrentLocker._instance
+
+    def is_locked(self) -> bool:
+        return ConcurrentLocker.lock.locked()
+
+async def locker() -> ConcurrentLocker:
+    try:
+        c = ConcurrentLocker()
+        while c.is_locked():
+            await asyncio.sleep(0)
+        yield c
+    except Exception as e:
+        pass

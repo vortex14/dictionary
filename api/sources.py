@@ -4,7 +4,7 @@ from utils import get_hash
 from typing import List
 
 
-from models.models_orm import ( SourcePy, Source, SourceShortFields, SourceType, SourceTypeShortFields, SourceTypePy, SoureFullRelationFields )
+from models.models_orm import ( SourcePy, Source, SourceShortFields, SourceType, SourceTypeShortFields, SourceTypePy, SoureFullRelationFields, SourceCategoryPy, SourceCategoryShortFieldsPy, SourceCategory, SourceRelationsPy )
 
 LOG = typhoon_logger(name="api-sources", component="api", level="DEBUG")
 
@@ -19,6 +19,34 @@ async def get_types():
     return await SourceType.all()
 
 
+@router.get("/categories", status_code=status.HTTP_200_OK, response_model=List[SourceCategoryPy])
+async def get_list_categories():
+    return await SourceCategory.filter().all()
+
+
+@router.delete("/categories", status_code=status.HTTP_200_OK, response_model=List[SourceCategoryPy])
+async def del_list_categories(ids: List[int]):
+
+    for _id in ids: await SourceCategory.filter(id=_id).delete()
+
+    return await SourceCategory.filter().all()
+
+
+
+@router.post("/categories", status_code=status.HTTP_200_OK, response_model=List[SourceCategoryPy])
+async def post_categories(categories: List[SourceCategoryShortFieldsPy]):
+    
+    for category in categories:
+        if category.parent:
+            if not await SourceCategory.filter(id=category.parent).first():
+                raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Not found parent category")
+            
+        duple = await SourceCategory.filter(title=category.title, parent=category.parent).first()
+        if not duple:
+            await SourceCategory(title=category.title, parent=category.parent).save()
+
+
+    return await SourceCategory.filter().all()
 
 # @router.post("/{source_id}/links")
 # async def add_new_link(link: SourceLinkShortFields):
@@ -65,7 +93,7 @@ async def get_source_relation(source_id: int):
     return SoureFullRelationFields(type=_type, source=_source)
 
 @router.post("/", response_model=SourcePy)
-async def new_source(source: SourceShortFields):
+async def new_source(source: SourceRelationsPy):
     LOG.info("create a new source", details=dict(source))
     exist = await Source.filter(title=source.title).first()
     if exist: raise HTTPException(status_code=status.HTTP_409_CONFLICT)

@@ -1,9 +1,6 @@
 from email.policy import default
 import os
-import logging
 import asyncio
-from nis import match
-from typing_extensions import Self
 from logger import typhoon_logger
 from aiogram import Bot, Dispatcher, executor, types
 

@@ -23,6 +23,16 @@ class DefinitionSource(BaseModel):
     source_id: int
 
 
+class SourceLink(Model):
+    id = fields.IntField(pk=True, unique=True)
+    link = fields.CharField(max_length=250, unique=True)
+    type = fields.ForeignKeyField("models.LinkType", related_name="type", null=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+
+SourceLinkPy = pydantic_model_creator(SourceLink)
+SourceLinkShortFields = pydantic_model_creator(SourceLink, exclude=('id', 'created_at'), name="SourceLinkShortFields")
+
+
 # определение может быть не закончено, может быть не одобрено, может быть ошибочно, может быть готово к публикации, может быть опубликовано
 class DefinitionStatus(Model):
     id = fields.IntField(pk=True, unique=True)
@@ -35,7 +45,14 @@ DefinitionStatusShortFields = pydantic_model_creator(DefinitionStatus, exclude=(
 
 # любой источник должен входить в некую категория и иметь подкатегории. 
 class SourceCategory(Model):
-    pass
+    id = fields.IntField(pk=True, unique=True)
+    title = fields.CharField(max_length=300, index=True)
+    created_at = fields.DatetimeField(auto_now_add=True)
+    parent = fields.IntField(null=True)
+
+SourceCategoryPy = pydantic_model_creator(SourceCategory, name="SourceCategoryPy")
+SourceCategoryShortFieldsPy = pydantic_model_creator(SourceCategory, exclude=('id', 'created_at'), name="SourceCategoryShortFieldsPy")
+
 
 class Definition(Model):
     id = fields.IntField(pk=True, unique=True)
@@ -60,11 +77,18 @@ class Source(Model):
     id = fields.IntField(pk=True, unique=True)
     title = fields.CharField(max_length=250, index=True, unique=True)
     definitions: fields.ManyToManyRelation[Definition]
+    category: fields.ForeignKeyField("models.SourceCategory", related_name="category", null=True)
     type = fields.ForeignKeyField("models.SourceType", related_name="type", null=True)
     links: fields.ManyToManyRelation["SourceLink"] = fields.ManyToManyField(
         "models.SourceLink", related_name="links", through="links_sources", null=True
     )
     created_at = fields.DatetimeField(auto_now_add=True)
+
+SourcePy = pydantic_model_creator(Source)
+SourceShortPyFields = pydantic_model_creator(Source, name="SourceShortPyFields", exclude=('id', 'created_at'))
+
+class SourceRelationsPy(SourceShortPyFields):
+    category_id: int = None
 
 class SourceType(Model):
     id = fields.IntField(pk=True, unique=True)
@@ -77,20 +101,12 @@ class LinkType(Model):
     created_at = fields.DatetimeField(auto_now_add=True)
 
 
-class SourceLink(Model):
-    id = fields.IntField(pk=True, unique=True)
-    link = fields.CharField(max_length=250, unique=True)
-    type = fields.ForeignKeyField("models.LinkType", related_name="type", null=True)
-    created_at = fields.DatetimeField(auto_now_add=True)
 
-SourcePy = pydantic_model_creator(Source)
-SourceShortPyFields = pydantic_model_creator(Source, name="SourceShortPyFields", exclude=('id', 'created_at'))
 SourceTypePy = pydantic_model_creator(SourceType)
 SourceTypeShortFields = pydantic_model_creator(SourceType, name="SourceTypeShortFields", exclude=('id', 'created_at'))
-SourceShortFields = pydantic_model_creator(Source, exclude=('title', 'definitions', 'created_at'), name="SourceShortFields")
+SourceShortFields = pydantic_model_creator(Source, exclude=('id', 'definitions', 'created_at'), name="SourceShortFields")
 
-SourceLinkPy = pydantic_model_creator(SourceLink)
-SourceLinkShortFields = pydantic_model_creator(SourceLink, exclude=('id', 'created_at'), name="SourceLinkShortFields")
+
 
 LinkTypePy = pydantic_model_creator(LinkType)
 LinkTypeShortFields = pydantic_model_creator(LinkType, exclude=('id', 'created_at'), name="LinkTypeShortFields")

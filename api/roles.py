@@ -22,9 +22,8 @@ async def delete_roles(role: RolePy):
 @router.put("/", status_code=status.HTTP_200_OK)
 async def new_role(role: RolePy):
     roleExist = await Role.exists(title=role.title)
-    match roleExist:
-        case True:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role already created!")
-        case False:
-            await (await Role.create(title=role.title)).save()
+    if roleExist:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Role already created!")
+    else:
+        await (await Role.create(title=role.title)).save()
 

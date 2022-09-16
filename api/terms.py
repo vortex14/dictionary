@@ -23,12 +23,11 @@ async def get_terms(search: str = None):
 async def post_term(term: TermShortFields):
     _term = await Term.exists(title=term.title)
 
-    match _term:
-        case True:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Term already exist!")
-        case False:
-            term = await Term.create(title=term.title)
-            return term
+    if _term:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Term already exist!")
+    else:
+        term = await Term.create(title=term.title)
+        return term
 
 @router.delete("/{term_id}", status_code=status.HTTP_200_OK)
 async def delete_term(term_id: int):

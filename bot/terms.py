@@ -150,12 +150,11 @@ class CommandTerms:
 
         roleExist = await Term.exists(title=new_term)
 
-        match roleExist:
-            case True:
-                await self.close(message, f'Термин "{new_term}" существует', state)
-            case False:
-                await (await Term.create(title=new_term)).save()
-                await self.close(message, f'Термин "{new_term}" добавлен', state)
+        if roleExist:
+            await self.close(message, f'Термин "{new_term}" существует', state)
+        else:
+            await (await Term.create(title=new_term)).save()
+            await self.close(message, f'Термин "{new_term}" добавлен', state)
     
     async def on_count(self, message: types.Message, state: FSMContext):
         self.LOG.info(f"process {message.text} ...")

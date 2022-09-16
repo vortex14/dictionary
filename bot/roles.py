@@ -60,12 +60,11 @@ class CommandRoles:
 
         roleExist = await Role.exists(title=message.text)
 
-        match roleExist:
-            case True:
-                await self.close(message, "Такая роль существует", state)
-            case False:
-                await (await Role.create(title=message.text)).save()
-                await self.close(message, "ok", state)
+        if roleExist:
+            await self.close(message, "Такая роль существует", state)
+        else:
+            await (await Role.create(title=message.text)).save()
+            await self.close(message, "ok", state)
     
     async def on_count(self, message: types.Message, state: FSMContext):
         self.LOG.info(f"process {message.text} ...")

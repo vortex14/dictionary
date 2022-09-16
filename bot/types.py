@@ -40,15 +40,14 @@ class DefinitionTypeMixin:
         new_content = message.text.lower()
         typeExist = await DefinitionType.exists(title=new_content)
         current_state = await state.get_data()
-        match typeExist:
-            case True:
-                await state.finish()
-                await message.answer("Такой тип уже есть", reply_markup=types.ReplyKeyboardRemove())
-            case False:
-                await state.finish()
-                await DefinitionType.filter(type_id=int(current_state["type_id"])).update(title=new_content)
+        if typeExist:
+            await state.finish()
+            await message.answer("Такой тип уже есть", reply_markup=types.ReplyKeyboardRemove())
+        else:
+            await state.finish()
+            await DefinitionType.filter(type_id=int(current_state["type_id"])).update(title=new_content)
 
-                await message.answer("Обновлено", reply_markup=types.ReplyKeyboardRemove())
+            await message.answer("Обновлено", reply_markup=types.ReplyKeyboardRemove())
 
 
 
@@ -218,12 +217,11 @@ class CommandDefinitionTypes(DefinitionTypeMixin):
 
         typeExist = await DefinitionType.exists(title=message.text.lower())
 
-        match typeExist:
-            case True:
-                await self.close(message, "Такой тип существует", state)
-            case False:
-                await (await DefinitionType.create(title=message.text.lower())).save()
-                await self.close(message, "ok", state)
+        if typeExist:
+            await self.close(message, "Такой тип существует", state)
+        else:
+            await (await DefinitionType.create(title=message.text.lower())).save()
+            await self.close(message, "ok", state)
     
     async def on_count(self, message: types.Message, state: FSMContext):
         self.LOG.info(f"process {message.text} ...")

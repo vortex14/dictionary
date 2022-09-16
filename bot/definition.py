@@ -278,13 +278,12 @@ class CommandDefinition(DefinitionTypeMixin):
 
         termExist = await Term.exists(title=term_name)
 
-        match termExist:
-            case True:
-                await Form.def_content.set()
-                await state.update_data(term=term_name)
-                await message.answer("Какое определение?", reply_markup=types.ReplyKeyboardRemove() )
-            case False:
-                await self.close(message, f'Термин "{term_name}"не создан', state)
+        if termExist:
+            await Form.def_content.set()
+            await state.update_data(term=term_name)
+            await message.answer("Какое определение?", reply_markup=types.ReplyKeyboardRemove() )
+        else:
+            await self.close(message, f'Термин "{term_name}"не создан', state)
     
     async def on_new_def(self, message: types.Message, state: FSMContext):
         def_content = message.html_text
@@ -392,18 +391,17 @@ class CommandDefinition(DefinitionTypeMixin):
 
         termExist = await Term.exists(title=term_name)
 
-        match termExist:
-            case True:
-                await state.finish()
+        if termExist:
+            await state.finish()
                 
-                term = await Term.filter(title=term_name).first()
-                defs = await Definition.filter(term=term.term_id)
-                await state.update_data(page=1, count=len(defs), term=term_name, term_id=term.term_id)
+            term = await Term.filter(title=term_name).first()
+            defs = await Definition.filter(term=term.term_id)
+            await state.update_data(page=1, count=len(defs), term=term_name, term_id=term.term_id)
 
-                await message.reply("Добавленные определения. Для добавления типа определения необходимо его выбрать из списка.", reply_markup=types.ReplyKeyboardRemove())
-                await message.reply(":", reply_markup=self.get_def_list(1, defs, True))
-            case False:
-                await self.close(message, f'Термин "{term_name}"не создан', state)
+            await message.reply("Добавленные определения. Для добавления типа определения необходимо его выбрать из списка.", reply_markup=types.ReplyKeyboardRemove())
+            await message.reply(":", reply_markup=self.get_def_list(1, defs, True))
+        else:
+            await self.close(message, f'Термин "{term_name}"не создан', state)
     
     
     async def on_def_list(self, message: types.Message, state: FSMContext):
